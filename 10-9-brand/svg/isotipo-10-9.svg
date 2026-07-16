@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Fondo negro profundo con esquinas redondeadas iOS/Android -->
+  <rect width="1024" height="1024" rx="230" fill="#0D0D0D"/>
+  
+  <!-- Esquinas doradas tipo scorecard -->
+  <g stroke="#D4AF37" stroke-width="16" fill="none" stroke-linecap="square">
+    <!-- Esquina superior izquierda -->
+    <path d="M 176 240 L 176 176 L 240 176"/>
+    <!-- Esquina superior derecha -->
+    <path d="M 784 176 L 848 176 L 848 240"/>
+    <!-- Esquina inferior izquierda -->
+    <path d="M 176 784 L 176 848 L 240 848"/>
+    <!-- Esquina inferior derecha -->
+    <path d="M 848 784 L 848 848 L 784 848"/>
+  </g>
+  
+  <!-- Número 10 (blanco, arriba) -->
+  <text x="512" y="440" font-family="Oswald, Arial Black, sans-serif" font-weight="700" font-size="320" fill="#F5F5F5" text-anchor="middle" letter-spacing="-14">10</text>
+  
+  <!-- Guión borgoña divisor (más compacto y con más aire) -->
+  <rect x="336" y="500" width="352" height="28" fill="#7A0A1C" rx="4"/>
+  
+  <!-- Número 9 (dorado, abajo) -->
+  <text x="512" y="800" font-family="Oswald, Arial Black, sans-serif" font-weight="700" font-size="320" fill="#D4AF37" text-anchor="middle" letter-spacing="-14">9</text>
+</svg>

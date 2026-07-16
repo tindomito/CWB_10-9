@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Android adaptive icon: el contenido debe estar en el 66% central -->
+  <!-- Capa de fondo (background) -->
+  <rect width="1024" height="1024" fill="#0D0D0D"/>
+  
+  <!-- Zona segura: 512px centrados (50% del canvas) -->
+  <g transform="translate(256, 256) scale(0.5)">
+    <!-- Esquinas doradas scorecard -->
+    <g stroke="#D4AF37" stroke-width="20" fill="none" stroke-linecap="square">
+      <path d="M 176 240 L 176 176 L 240 176"/>
+      <path d="M 784 176 L 848 176 L 848 240"/>
+      <path d="M 176 784 L 176 848 L 240 848"/>
+      <path d="M 848 784 L 848 848 L 784 848"/>
+    </g>
+    
+    <!-- Número 10 -->
+    <text x="512" y="440" font-family="Oswald, Arial Black, sans-serif" font-weight="700" font-size="320" fill="#F5F5F5" text-anchor="middle" letter-spacing="-14">10</text>
+    
+    <!-- Guión borgoña -->
+    <rect x="336" y="500" width="352" height="28" fill="#7A0A1C" rx="4"/>
+    
+    <!-- Número 9 -->
+    <text x="512" y="800" font-family="Oswald, Arial Black, sans-serif" font-weight="700" font-size="320" fill="#D4AF37" text-anchor="middle" letter-spacing="-14">9</text>
+  </g>
+</svg>

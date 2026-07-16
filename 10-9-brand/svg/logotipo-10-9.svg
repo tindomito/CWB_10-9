@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 1600 600">
+  <!-- Fondo negro profundo -->
+  <rect width="1600" height="600" fill="#0D0D0D"/>
+  
+  <!-- Números 10 - 9 centrados -->
+  <!-- 10 blanco -->
+  <text x="500" y="340" font-family="Oswald, Arial Black, sans-serif" font-weight="700" font-size="280" fill="#F5F5F5" text-anchor="middle" letter-spacing="-10">10</text>
+  
+  <!-- Guión borgoña -->
+  <rect x="720" y="232" width="160" height="30" fill="#7A0A1C" rx="4"/>
+  
+  <!-- 9 dorado -->
+  <text x="1050" y="340" font-family="Oswald, Arial Black, sans-serif" font-weight="700" font-size="280" fill="#D4AF37" text-anchor="middle" letter-spacing="-10">9</text>
+  
+  <!-- Tagline -->
+  <text x="800" y="440" font-family="Inter, Helvetica, sans-serif" font-weight="500" font-size="32" fill="#888780" text-anchor="middle" letter-spacing="16">SCORE · DEBATE · COMMUNITY</text>
+  
+  <!-- Línea divisoria borgoña -->
+  <line x1="600" y1="480" x2="1000" y2="480" stroke="#7A0A1C" stroke-width="1.5"/>
+  
+  <!-- Slogan -->
+  <text x="800" y="520" font-family="Inter, Helvetica, sans-serif" font-weight="400" font-style="italic" font-size="26" fill="#D4AF37" text-anchor="middle" letter-spacing="8">el round no miente</text>
+</svg>

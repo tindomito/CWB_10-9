@@ -1,0 +1,117 @@
+/*Importamos Tailwind para poder usarlo en el css*/
+@import "tailwindcss";
+
+/*
+ * Paleta oficial 10-9 (ver CLAUDE.md sección 3).
+ * Sobrescribimos la paleta default de Tailwind para que las clases
+ * existentes (bg-red-*, text-amber-*, bg-zinc-*, etc.) respeten la marca.
+ */
+@theme {
+  /* Marca */
+  --color-ufc-black: #0d0d0d;
+  --color-ufc-dark: #0d0d0d;
+  --color-ufc-card: #1c1c1c;
+  --color-ufc-gold: #d4af37;
+  --color-ufc-red: #c41e3a;
+  --color-ufc-burgundy: #7a0a1c;
+
+  /* Dorado (acento primario) → mapeado a amber y yellow */
+  --color-amber-300: #e6c35c;
+  --color-amber-400: #dcb848;
+  --color-amber-500: #d4af37;
+  --color-amber-600: #b8962d;
+  --color-amber-700: #916f1f;
+  --color-yellow-300: #e6c35c;
+  --color-yellow-400: #dcb848;
+  --color-yellow-500: #d4af37;
+  --color-yellow-600: #b8962d;
+  --color-yellow-700: #916f1f;
+
+  /* Rojo crítico + borgoña → degradés de acento */
+  --color-red-300: #e06b7e;
+  --color-red-400: #d8425a;
+  --color-red-500: #c41e3a;
+  --color-red-600: #c41e3a;
+  --color-red-700: #9a1530;
+  --color-red-800: #7a0a1c;
+  --color-red-900: #5a0614;
+  --color-rose-500: #c41e3a;
+  --color-rose-600: #c41e3a;
+  --color-rose-700: #9a1530;
+
+  /* Fondos oscuros → carbón y negro profundo */
+  --color-zinc-700: #2a2a2a;
+  --color-zinc-800: #1c1c1c;
+  --color-zinc-900: #0d0d0d;
+  --color-zinc-950: #080808;
+  --color-gray-800: #1c1c1c;
+  --color-gray-900: #0d0d0d;
+  --color-neutral-800: #1c1c1c;
+  --color-neutral-900: #0d0d0d;
+}
+
+/* Prevent horizontal scroll on all devices */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/*
+ * El negro base vive SOLO en html: el body queda transparente para que
+ * las tramas de marca (.trama-fondo, z-index -1) se vean detrás del
+ * contenido. Si el body tuviera fondo propio, taparía cualquier capa
+ * con z-index negativo.
+ */
+html {
+  background-color: #0d0d0d;
+}
+
+/*
+ * Utilidades de marca 10-9.
+ * Nota sobre el dorado: hay una sola fuente de verdad, #D4AF37. Se puede
+ * escribir como hex arbitrario (bg-[#D4AF37]) o como clase Tailwind
+ * (bg-amber-500 / text-amber-500) porque el @theme de arriba remapea toda
+ * la escala amber/yellow a los dorados de marca. amber-400 es una versión
+ * apenas más clara, pensada para estados hover.
+ */
+@layer utilities {
+  /* Carbón de las cards deportivas (única utilidad ufc-* en uso). */
+  .bg-ufc-card {
+    background-color: #1c1c1c;
+  }
+  /* Ocultar scrollbar manteniendo el scroll (tabs horizontales en mobile) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Tramas de marca 10-9 · panal octagonal oficial (tramas-10-9/)
+   Tile original 168×168 embebido como data-URI. Se usa como capa
+   decorativa fija detrás del contenido (z-index -1), sin afectar
+   layout ni interacción. Regla de marca: a más contenido encima,
+   más sutil la trama.
+   ============================================================ */
+.trama-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  margin: 0 !important; /* blindado contra space-y-* del contenedor */
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: 126px 126px;
+}
+
+/* 01_oro_linea_sobre_negro — fondo de Predicciones (densidad baja ~6%) */
+.trama-oro-negro {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='168' height='168' viewBox='0 0 168 168'%3E%3Cg fill='none' stroke='%23D4AF37' stroke-opacity='0.06' stroke-width='3'%3E%3Cpolygon points='68,8 132,8 168,44 168,108 132,144 68,144 32,108 32,44'/%3E%3Cpolygon points='-16,8 48,8 84,44 84,108 48,144 -16,144 -52,108 -52,44'/%3E%3Cpolygon points='152,8 216,8 252,44 252,108 216,144 152,144 116,108 116,44'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* 06_borgona_linea_sobre_negro — fondo de Publicaciones (la más sutil) */
+.trama-borgona-negro {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='168' height='168' viewBox='0 0 168 168'%3E%3Cg fill='none' stroke='%237A0A1C' stroke-opacity='0.28' stroke-width='3'%3E%3Cpolygon points='68,8 132,8 168,44 168,108 132,144 68,144 32,108 32,44'/%3E%3Cpolygon points='-16,8 48,8 84,44 84,108 48,144 -16,144 -52,108 -52,44'/%3E%3Cpolygon points='152,8 216,8 252,44 252,108 216,144 152,144 116,108 116,44'/%3E%3C/g%3E%3C/svg%3E");
+}

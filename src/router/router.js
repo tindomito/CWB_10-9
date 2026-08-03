@@ -1,24 +1,36 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Home from '../pages/Home.vue';
-import PublicChat from '../pages/PublicChat.vue';
-import Login from '../pages/Login.vue';
-import Register from '../pages/Register.vue';
-import Profile from '../pages/Profile.vue';
-import Settings from '../pages/Settings.vue';
-import Publications from '../pages/Publications.vue';
-import PrivateChat from '../pages/PrivateChat.vue';
-import Messages from '../pages/Messages.vue';
-import Fighters from '../pages/Fighters.vue';
-import Predictions from '../pages/Predictions.vue';
-import Leaderboards from '../pages/Leaderboards.vue';
-import Notifications from '../pages/Notifications.vue';
-import GroupChat from '../pages/GroupChat.vue';
-import Scorecard from '../pages/Scorecard.vue';
-import RankingEditor from '../pages/RankingEditor.vue';
-import RankingDetail from '../pages/RankingDetail.vue';
-import PublicationDetail from '../pages/PublicationDetail.vue';
-import EventDetail from '../pages/EventDetail.vue';
-import FightDetail from '../pages/FightDetail.vue';
+
+/**
+ * Las páginas se importan de forma diferida (lazy loading): cada una viaja en
+ * su propio archivo y el navegador lo descarga recién cuando se entra a esa
+ * ruta.
+ *
+ * Con imports estáticos, Vite empaquetaba las 20 páginas juntas y quien abría
+ * el inicio se bajaba también el editor de rankings, los chats y los ajustes
+ * sin usarlos. La función `() => import(...)` es lo que le indica a Vite dónde
+ * cortar el bundle.
+ */
+const Home              = () => import('../pages/Home.vue');
+const PublicChat        = () => import('../pages/PublicChat.vue');
+const Login             = () => import('../pages/Login.vue');
+const Register          = () => import('../pages/Register.vue');
+const Profile           = () => import('../pages/Profile.vue');
+const Settings          = () => import('../pages/Settings.vue');
+const Publications      = () => import('../pages/Publications.vue');
+const PrivateChat       = () => import('../pages/PrivateChat.vue');
+const Messages          = () => import('../pages/Messages.vue');
+const Fighters          = () => import('../pages/Fighters.vue');
+const Predictions       = () => import('../pages/Predictions.vue');
+const Leaderboards      = () => import('../pages/Leaderboards.vue');
+const Notifications     = () => import('../pages/Notifications.vue');
+const GroupChat         = () => import('../pages/GroupChat.vue');
+const Scorecard         = () => import('../pages/Scorecard.vue');
+const RankingEditor     = () => import('../pages/RankingEditor.vue');
+const RankingDetail     = () => import('../pages/RankingDetail.vue');
+const PublicationDetail = () => import('../pages/PublicationDetail.vue');
+const EventDetail       = () => import('../pages/EventDetail.vue');
+const FightDetail       = () => import('../pages/FightDetail.vue');
+const NotFound          = () => import('../pages/NotFound.vue');
 
 // Definimos la lista de rutas de nuestra aplicación
 const routes = [
@@ -149,6 +161,15 @@ const routes = [
         path: '/rankings/:id',
         component: RankingDetail,
         name: 'RankingDetail'
+    },
+    // Catch-all: va último, así solo atrapa lo que ninguna ruta anterior
+    // reconoció. En producción el servidor responde index.html para cualquier
+    // URL (lo necesita el modo history), así que sin esto una dirección
+    // inexistente dejaría la app en blanco.
+    {
+        path: '/:pathMatch(.*)*',
+        component: NotFound,
+        name: 'NotFound'
     }
 ];
 

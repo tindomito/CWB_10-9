@@ -1,9 +1,22 @@
 <template>
     <div class="max-w-4xl mx-auto px-4 sm:px-0 space-y-4 sm:space-y-6">
         <!-- Header -->
-        <div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-white">Predicciones</h1>
-            <p class="text-gray-400 text-sm mt-1">Bancate tu tarjeta. Ganá XP por cada acierto.</p>
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-white">Predicciones</h1>
+                <p class="text-gray-400 text-sm mt-1">Bancate tu tarjeta. Ganá XP por cada acierto.</p>
+            </div>
+            <button
+                v-if="isAdmin"
+                @click="showPendingPanel = true"
+                type="button"
+                class="shrink-0 px-3 py-2 text-xs font-bold rounded-lg border border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-colors flex items-center gap-1.5"
+            >
+                <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Peleas sin cerrar
+            </button>
         </div>
 
         <!-- Stats compactas y unificadas: Nivel · Racha · XP · HoF + link Leaderboards -->
@@ -61,8 +74,8 @@
             </button>
         </div>
 
-        <!-- Sin evento -->
-        <div v-else-if="!event" class="bg-[#1C1C1C] border border-zinc-800 rounded-xl p-8 text-center">
+        <!-- Sin eventos -->
+        <div v-else-if="eventGroups.length === 0" class="bg-[#1C1C1C] border border-zinc-800 rounded-xl p-8 text-center">
             <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-zinc-800 flex items-center justify-center">
                 <svg aria-hidden="true" class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -72,20 +85,18 @@
             <p class="text-xs text-gray-500">Volvé pronto cuando se confirme la próxima cartelera.</p>
         </div>
 
-        <!-- Evento + peleas -->
+        <!-- Eventos + peleas -->
         <template v-else>
-            <div class="bg-[#1C1C1C] border border-zinc-800 border-l-2 border-l-[#7A0A1C] rounded-xl p-4 sm:p-5">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                        <p class="text-[11px] text-[#D4AF37] uppercase tracking-widest font-bold">Próximo evento</p>
-                        <h2 class="text-xl sm:text-2xl font-bold text-white mt-0.5">{{ event.name }}</h2>
-                        <p v-if="event.dateIso" class="text-sm text-gray-400 mt-1">{{ formattedEventDate }}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-400">{{ fights.length }} pelea{{ fights.length === 1 ? '' : 's' }}</p>
-                        <p v-if="event.isPpv" class="text-[10px] font-bold text-[#D4AF37] uppercase">PPV</p>
-                    </div>
-                </div>
+            <!-- Selector de organización -->
+            <div v-if="availableOrgs.length > 1" class="flex items-center justify-between gap-3 bg-[#1C1C1C] border border-zinc-800 rounded-xl px-4 py-3">
+                <label for="pred-org" class="text-sm font-medium text-gray-300 shrink-0">Organización</label>
+                <select
+                    id="pred-org"
+                    v-model="selectedOrg"
+                    class="bg-zinc-900 border border-zinc-700 text-white text-sm font-semibold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37] cursor-pointer"
+                >
+                    <option v-for="o in availableOrgs" :key="o.value" :value="o.value">{{ o.label }}</option>
+                </select>
             </div>
 
             <!-- No autenticado -->
@@ -96,10 +107,24 @@
                 </p>
             </div>
 
-            <!-- Lista de peleas -->
-            <div class="space-y-3 sm:space-y-4">
+            <!-- Eventos de la organización elegida -->
+            <div v-for="group in visibleGroups" :key="group.event.slug" class="space-y-3 sm:space-y-4">
+                <div class="bg-[#1C1C1C] border border-zinc-800 border-l-2 border-l-[#7A0A1C] rounded-xl p-4 sm:p-5">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <p class="text-[11px] text-[#D4AF37] uppercase tracking-widest font-bold">Próximo evento</p>
+                            <h2 class="text-xl sm:text-2xl font-bold text-white mt-0.5">{{ group.event.name }}</h2>
+                            <p v-if="group.event.dateIso" class="text-sm text-gray-400 mt-1">{{ formatEventDate(group.event.dateIso) }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-400">{{ group.fights.length }} pelea{{ group.fights.length === 1 ? '' : 's' }}</p>
+                            <p v-if="group.event.isPpv" class="text-[10px] font-bold text-[#D4AF37] uppercase">PPV</p>
+                        </div>
+                    </div>
+                </div>
+
                 <PredictionCard
-                    v-for="fight in fights"
+                    v-for="fight in group.fights"
                     :key="fight.id"
                     :fight="fight"
                     :userId="currentUserId"
@@ -113,15 +138,23 @@
                 />
             </div>
         </template>
+
+        <!-- Admin: peleas viejas sin cerrar -->
+        <AdminPendingFightsPanel
+            :open="showPendingPanel"
+            @close="showPendingPanel = false"
+            @resolved="handlePendingResolved"
+        />
     </div>
 </template>
 
 <script>
 import PredictionCard from '../components/PredictionCard.vue';
+import AdminPendingFightsPanel from '../components/AdminPendingFightsPanel.vue';
 import { useAuth } from '../composables/useAuth.js';
 import { useProfile } from '../composables/useProfile.js';
 import {
-    loadAndSyncNextEvent,
+    loadUpcomingEventGroups,
     getUserPredictionsForFights,
     getCommunityBreakdown,
     subscribeToFightPredictions,
@@ -130,10 +163,11 @@ import {
 } from '../services/predictions.js';
 import { progressFromXp } from '../services/leveling.js';
 import { getMyCompetitiveRating, divisionFromRating, progressInDivision } from '../services/hallOfFame.js';
+import { SEED_ORG_LABELS } from '../services/sports/index.js';
 
 export default {
     name: 'Predictions',
-    components: { PredictionCard },
+    components: { PredictionCard, AdminPendingFightsPanel },
     setup() {
         const { isAuthenticated, userId } = useAuth();
         const { currentProfile, refreshCurrentProfile, isPro } = useProfile();
@@ -147,8 +181,9 @@ export default {
     },
     data() {
         return {
-            event: null,
-            fights: [],
+            eventGroups: [],             // [{ org, event, fights }] — UFC + otras orgs
+            selectedOrg: 'ufc',          // organización elegida en el dropdown
+            showPendingPanel: false,     // panel admin de peleas sin cerrar
             predictionsByFight: {},      // fightId → prediction row
             communityByFight: {},        // fightId → { counts, total }
             loading: true,
@@ -184,12 +219,23 @@ export default {
         hofProgress() {
             return this.competitiveRating ? progressInDivision(this.competitiveRating.rating) : null;
         },
-        formattedEventDate() {
-            if (!this.event?.dateIso) return '';
-            return new Date(this.event.dateIso).toLocaleString('es-AR', {
-                weekday: 'long', day: 'numeric', month: 'long',
-                hour: '2-digit', minute: '2-digit'
-            });
+        allFights() {
+            return this.eventGroups.flatMap(g => g.fights);
+        },
+        // Organizaciones presentes (para el dropdown), UFC primero
+        availableOrgs() {
+            const labels = { ufc: 'UFC', ...SEED_ORG_LABELS };
+            const out = [];
+            for (const g of this.eventGroups) {
+                if (!out.some(o => o.value === g.org)) {
+                    out.push({ value: g.org, label: labels[g.org] || g.org });
+                }
+            }
+            return out;
+        },
+        // Solo los eventos de la organización elegida
+        visibleGroups() {
+            return this.eventGroups.filter(g => g.org === this.selectedOrg);
         }
     },
     methods: {
@@ -199,24 +245,30 @@ export default {
             this.cleanupSubs();
 
             try {
-                const { event, fights, error } = await loadAndSyncNextEvent();
+                const { groups, error } = await loadUpcomingEventGroups();
                 if (error) {
                     this.error = error.message || 'Error al cargar el evento';
                     return;
                 }
-                this.event = event;
-                this.fights = fights || [];
+                this.eventGroups = groups || [];
+
+                // Default UFC; si no hay evento UFC, caer en la primera org disponible
+                if (!this.availableOrgs.some(o => o.value === this.selectedOrg)) {
+                    this.selectedOrg = this.availableOrgs[0]?.value || 'ufc';
+                }
+
+                const fights = this.allFights;
 
                 // Cargar mis predicciones
-                if (this.currentUserId && this.fights.length > 0) {
-                    const ids = this.fights.map(f => f.id);
+                if (this.currentUserId && fights.length > 0) {
+                    const ids = fights.map(f => f.id);
                     const { predictions } = await getUserPredictionsForFights(this.currentUserId, ids);
                     this.predictionsByFight = {};
                     for (const p of predictions) this.predictionsByFight[p.fight_id] = p;
                 }
 
                 // Cargar consenso comunidad por pelea (en paralelo)
-                await Promise.all(this.fights.map(async (f) => {
+                await Promise.all(fights.map(async (f) => {
                     const { counts, total } = await getCommunityBreakdown(f.id);
                     this.communityByFight = { ...this.communityByFight, [f.id]: { counts, total } };
                 }));
@@ -230,9 +282,23 @@ export default {
                 this.loading = false;
             }
         },
+        /** Reemplaza una pelea en el grupo que la contenga (reactivo). */
+        replaceFight(updatedFight) {
+            for (const group of this.eventGroups) {
+                const idx = group.fights.findIndex(f => f.id === updatedFight.id);
+                if (idx >= 0) { group.fights.splice(idx, 1, updatedFight); return; }
+            }
+        },
+        formatEventDate(dateIso) {
+            if (!dateIso) return '';
+            return new Date(dateIso).toLocaleString('es-AR', {
+                weekday: 'long', day: 'numeric', month: 'long',
+                hour: '2-digit', minute: '2-digit'
+            });
+        },
         setupRealtime() {
             // Predicciones de la comunidad (recalcular conteo cuando cambia algo)
-            for (const f of this.fights) {
+            for (const f of this.allFights) {
                 const sub = subscribeToFightPredictions(f.id, async () => {
                     const { counts, total } = await getCommunityBreakdown(f.id);
                     this.communityByFight = { ...this.communityByFight, [f.id]: { counts, total } };
@@ -241,10 +307,9 @@ export default {
             }
 
             // Updates de la pelea (cambio de status / resultado cargado)
-            const ids = this.fights.map(f => f.id);
+            const ids = this.allFights.map(f => f.id);
             this.fightsSub = subscribeToFights(ids, async (updatedFight) => {
-                const idx = this.fights.findIndex(f => f.id === updatedFight.id);
-                if (idx >= 0) this.fights.splice(idx, 1, updatedFight);
+                this.replaceFight(updatedFight);
 
                 // Si se resolvió, recargar mi predicción para ver el XP
                 if (updatedFight.status === 'finished' && this.currentUserId) {
@@ -262,10 +327,18 @@ export default {
             delete next[fightId];
             this.predictionsByFight = next;
         },
+        /**
+         * Una pelea vieja se cerró desde el panel de admin. Puede no estar en
+         * la vista actual, así que refrescamos perfil (XP) y, si aparece acá,
+         * su tarjeta.
+         */
+        async handlePendingResolved(updatedFight) {
+            if (updatedFight) this.replaceFight(updatedFight);
+            await this.refreshCurrentProfile();
+        },
         async handleFightResolved(updatedFight) {
-            // Actualizar la pelea en el array local
-            const idx = this.fights.findIndex(f => f.id === updatedFight.id);
-            if (idx >= 0) this.fights.splice(idx, 1, updatedFight);
+            // Actualizar la pelea en su grupo
+            this.replaceFight(updatedFight);
 
             // Releer mi predicción para esta pelea (para ver el XP awarded)
             if (this.currentUserId) {

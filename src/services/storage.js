@@ -15,15 +15,14 @@ const COVER_FOLDER  = 'covers';  // Subcarpeta para fotos de portada (cover_url)
  */
 export async function uploadPostImage(file, userId) {
     try {
-        // Validar que sea una imagen
-        if (!file.type.startsWith('image/')) {
-            return { url: null, error: { message: 'El archivo debe ser una imagen' } };
-        }
-
-        // Validar tamaño (máximo 5MB)
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (file.size > maxSize) {
-            return { url: null, error: { message: 'La imagen no debe superar los 5MB' } };
+        // Misma validación que el resto de las subidas: lista blanca de formatos
+        // y tope de tamaño. Es una lista blanca y no `type.startsWith('image/')`
+        // porque eso aceptaría `image/svg+xml`, y un SVG puede traer JavaScript
+        // adentro: al servirse desde el bucket público quedaría un XSS alojado
+        // en el dominio del proyecto.
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            return { url: null, error: { message: validation.error } };
         }
 
         // Generar nombre único para el archivo

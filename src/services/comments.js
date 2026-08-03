@@ -119,13 +119,22 @@ export async function updateComment(commentId, updates) {
  */
 export async function deleteComment(commentId) {
     try {
-        const { error } = await supabase
+        // `.select()` para distinguir "borrado" de "RLS lo rechazó": un DELETE
+        // bloqueado no devuelve error, solo afecta 0 filas.
+        const { data: deleted, error } = await supabase
             .from('comments')
             .delete()
-            .eq('id', commentId);
+            .eq('id', commentId)
+            .select('id');
 
         if (error) {
             return { success: false, error };
+        }
+        if (!deleted || deleted.length === 0) {
+            return {
+                success: false,
+                error: { message: 'No se pudo eliminar el comentario: no existe o no tenés permisos.' }
+            };
         }
 
         return { success: true, error: null };

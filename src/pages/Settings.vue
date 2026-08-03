@@ -425,6 +425,58 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Preferencias del feed: organizaciones -->
+            <div class="bg-zinc-900 shadow rounded-lg">
+                <div class="px-6 py-6">
+                    <h2 class="text-lg font-medium text-white mb-1">Organizaciones</h2>
+
+                    <!-- Próximo evento del Home -->
+                    <p class="text-sm font-medium text-gray-200 mt-4 mb-1">Próximo evento en el inicio</p>
+                    <p class="text-sm text-gray-400 mb-3">
+                        Organización cuyo próximo evento se destaca en el Home.
+                    </p>
+                    <div class="grid grid-cols-3 gap-2 mb-6">
+                        <button
+                            v-for="org in homeOrgs"
+                            :key="org"
+                            type="button"
+                            @click="selectHomeEventOrg(org)"
+                            :aria-pressed="homeEventOrg === org"
+                            :class="[
+                                'px-3 py-2.5 text-sm font-bold rounded-lg border transition-colors',
+                                homeEventOrg === org
+                                    ? 'bg-[#D4AF37] text-[#0D0D0D] border-[#D4AF37]'
+                                    : 'bg-zinc-800 text-gray-300 border-zinc-700 hover:border-zinc-600'
+                            ]"
+                        >
+                            {{ homeOrgLabel(org) }}
+                        </button>
+                    </div>
+
+                    <!-- Feed -->
+                    <p class="text-sm font-medium text-gray-200 mb-1 pt-4 border-t border-zinc-800">En tu feed</p>
+                    <p class="text-sm text-gray-400 mb-3">
+                        Qué organizaciones, además de UFC, ves en próximas peleas, eventos y predicciones.
+                    </p>
+                    <div class="space-y-3">
+                        <label
+                            v-for="org in seedOrgs"
+                            :key="org"
+                            class="flex items-center justify-between gap-3 p-3 rounded-lg border border-zinc-800 hover:border-zinc-700 cursor-pointer transition-colors"
+                        >
+                            <span class="text-sm font-medium text-white">{{ orgLabels[org] }}</span>
+                            <input
+                                type="checkbox"
+                                :checked="orgVisibility[org]"
+                                @change="toggleOrg(org, $event.target.checked)"
+                                :aria-label="`Mostrar ${orgLabels[org]} en el feed`"
+                                class="h-5 w-5 rounded border-zinc-600 bg-zinc-800 text-[#D4AF37] focus:ring-[#D4AF37] focus:ring-offset-0"
+                            />
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -435,6 +487,10 @@ import { useProfile } from '../composables/useProfile.js';
 import { useToast } from '../composables/useToast.js';
 import { logout, getCurrentUser, updatePassword } from '../services/auth.js';
 import { uploadProfileAvatar, validateImageFile, deleteProfileAvatar, uploadProfileCover, deleteProfileCover } from '../services/storage.js';
+import {
+    allSeedOrgs, isOrgVisible, setOrgVisible, SEED_ORG_LABELS,
+    homeEventOrgOptions, getHomeEventOrg, setHomeEventOrg, UFC_ORG
+} from '../services/sports/index.js';
 import RankBadge from '../components/RankBadge.vue';
 
 export default {
@@ -448,6 +504,7 @@ export default {
             currentProfile,
             loadCurrentProfile,
             updateCurrentProfile,
+            clearCurrentProfile,
             profileLoading
         } = useProfile();
         const { success, error: showError } = useToast();
@@ -457,6 +514,7 @@ export default {
             currentProfile,
             loadCurrentProfile,
             updateCurrentProfile,
+            clearCurrentProfile,
             profileLoading,
             clearUser,
             toastSuccess: success,
@@ -469,6 +527,13 @@ export default {
             saveLoading: false,
             successMessage: null,
             errorMessage: null,
+            // Preferencia de organizaciones visibles en el feed (localStorage)
+            seedOrgs: allSeedOrgs(),
+            orgLabels: SEED_ORG_LABELS,
+            orgVisibility: Object.fromEntries(allSeedOrgs().map(o => [o, isOrgVisible(o)])),
+            // Preferencia del próximo evento del Home
+            homeOrgs: homeEventOrgOptions(),
+            homeEventOrg: getHomeEventOrg(),
             form: {
                 display_name: '',
                 bio: '',
@@ -544,6 +609,25 @@ export default {
         }
     },
     methods: {
+        homeOrgLabel(org) {
+            return org === UFC_ORG ? 'UFC' : (this.orgLabels[org] || org);
+        },
+        // Elige la organización del próximo evento del Home (persistido)
+        selectHomeEventOrg(org) {
+            this.homeEventOrg = org;
+            setHomeEventOrg(org);
+            this.toastSuccess('Preferencia guardada');
+        },
+        // Muestra u oculta una organización en el feed (persistido en localStorage)
+        toggleOrg(org, visible) {
+            setOrgVisible(org, visible);
+            this.orgVisibility = { ...this.orgVisibility, [org]: visible };
+            this.toastSuccess(
+                visible
+                    ? `${this.orgLabels[org]} ahora aparece en tu feed`
+                    : `${this.orgLabels[org]} oculto de tu feed`
+            );
+        },
         // Inicializa el formulario con los datos del perfil
         initializeForm() {
             if (this.currentProfile) {
@@ -799,6 +883,7 @@ export default {
                     }
                     
                     this.clearUser();
+                    this.clearCurrentProfile();
                     this.$router.push('/');
                 } catch (error) {
                     console.error('Unexpected error during logout:', error);

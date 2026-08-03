@@ -9,10 +9,8 @@
  *   2. Cambiar el import en src/services/sports/index.js.
  *   3. No tocar nada más.
  *
- * --- DEMO MODE ---
- * El plan free de API-Sports solo expone temporadas 2022-2024. Anclamos "hoy"
- * 2 años atrás para que el dataset funcione como temporada activa. Quitar el
- * offset cuando se migre a un plan que cubra el año real.
+ * Requiere un plan que exponga la temporada en curso (el plan free solo llega
+ * hasta 2024). Con el plan Pro la app trabaja con fechas reales.
  */
 import {
     FIGHT_STATUS,
@@ -30,22 +28,83 @@ const API_KEY = import.meta.env.VITE_MMA_API_KEY;
 const BASE_URL = import.meta.env.VITE_MMA_API_BASE_URL;
 const HEADERS = { 'x-apisports-key': API_KEY };
 
-const AVAILABLE_SEASONS = [2022, 2023, 2024, 2025, 2026];
-const DEMO_YEAR_OFFSET = 2;
 const SEASON_CACHE_TTL_MS = 5 * 60 * 1000;
+
+/** Temporadas que el plan expone (desde el arranque de la API hasta hoy). */
+const FIRST_SEASON = 2022;
+const availableSeasons = () => {
+    const year = new Date().getFullYear();
+    const out = [];
+    for (let s = FIRST_SEASON; s <= year; s++) out.push(s);
+    return out;
+};
 
 let seasonCache = null;
 let seasonCacheTs = 0;
 
+/**
+ * Caché de peleas por peleador: fighterId → { ts, fights }.
+ *
+ * Traer el historial de un peleador cuesta una request por temporada, y la
+ * misma lista se pide dos veces seguidas (historial + récord) en la vista de
+ * pelea. Cacheando por peleador, la segunda lectura sale gratis.
+ *
+ * `inFlight` deduplica las llamadas concurrentes: si dos componentes piden el
+ * mismo peleador al mismo tiempo, se hace un solo viaje a la API.
+ */
+const fighterFightsCache = new Map();
+const fighterFightsInFlight = new Map();
+const FIGHTER_CACHE_TTL_MS = 30 * 60 * 1000;
+
 // ---------------------------------------------------------------------------
 // Helpers internos
 // ---------------------------------------------------------------------------
-export function getDemoNow() {
-    const d = new Date();
-    d.setFullYear(d.getFullYear() - DEMO_YEAR_OFFSET);
-    return d;
+const nowSec = () => Math.floor(Date.now() / 1000);
+
+/**
+ * El proveedor sirve algunos nombres con "mojibake": texto UTF-8 que en algún
+ * punto se leyó como Latin-1. Así llegan "JirÃ­ ProchÃ¡zka" o "Gaston BolaÃ±os"
+ * en lugar de "Jirí Procházka" y "Gaston Bolaños".
+ *
+ * La firma del problema es un byte alto (C2-DF) seguido de uno de continuación
+ * (80-BF). Cuando aparece, reinterpretamos la cadena como bytes y la
+ * decodificamos de nuevo como UTF-8. Si el resultado no es UTF-8 válido, se
+ * devuelve el original: nunca empeora un nombre que ya estaba bien.
+ */
+const MOJIBAKE_RE = /[Â-ß][-¿]/;
+
+function fixMojibake(str) {
+    if (typeof str !== 'string' || !MOJIBAKE_RE.test(str)) return str;
+    try {
+        const bytes = Uint8Array.from([...str], (c) => c.charCodeAt(0) & 0xff);
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+        return str;
+    }
 }
-const demoNowSec = () => Math.floor(getDemoNow().getTime() / 1000);
+
+/** Aplica fixMojibake a todos los strings de una respuesta (recursivo). */
+function fixEncodingDeep(value) {
+    if (typeof value === 'string') return fixMojibake(value);
+    if (Array.isArray(value)) return value.map(fixEncodingDeep);
+    if (value && typeof value === 'object') {
+        const out = {};
+        for (const k of Object.keys(value)) out[k] = fixEncodingDeep(value[k]);
+        return out;
+    }
+    return value;
+}
+
+/**
+ * Punto único de llamada a la API: hace el fetch, parsea el JSON y repara el
+ * encoding. Todo lo que entra a la app pasa por acá, así ningún endpoint queda
+ * sin normalizar.
+ */
+async function apiFetch(path) {
+    const res = await fetch(`${BASE_URL}${path}`, { headers: HEADERS });
+    const data = await res.json();
+    return fixEncodingDeep(data);
+}
 
 function hasErrors(data) {
     if (!data || !data.errors) return false;
@@ -156,15 +215,14 @@ async function fetchSeasonFights() {
         return seasonCache;
     }
 
-    const currentYear = getDemoNow().getFullYear();
-    const seasonsToTry = AVAILABLE_SEASONS.includes(currentYear)
-        ? [currentYear, currentYear - 1].filter(s => AVAILABLE_SEASONS.includes(s))
-        : AVAILABLE_SEASONS.slice(-2);
+    // Temporada en curso + la anterior: cubre los próximos eventos y los
+    // resultados recientes sin traer todo el histórico.
+    const currentYear = new Date().getFullYear();
+    const seasonsToTry = [currentYear, currentYear - 1].filter(s => s >= FIRST_SEASON);
 
     try {
         const requests = seasonsToTry.map(season =>
-            fetch(`${BASE_URL}/fights?season=${season}`, { headers: HEADERS })
-                .then(r => r.json())
+            apiFetch(`/fights?season=${season}`)
                 .then(data => (hasErrors(data) ? [] : (data.response || [])))
                 .catch(() => [])
         );
@@ -185,11 +243,7 @@ async function fetchSeasonFights() {
 export async function searchFighters(name) {
     if (!name || name.length < 2) return { fighters: [], error: null };
     try {
-        const response = await fetch(
-            `${BASE_URL}/fighters?search=${encodeURIComponent(name)}`,
-            { headers: HEADERS }
-        );
-        const data = await response.json();
+        const data = await apiFetch(`/fighters?search=${encodeURIComponent(name)}`);
         if (hasErrors(data)) return { fighters: [], error: errorsToMessage(data) };
         return { fighters: data.response || [], error: null };
     } catch (error) {
@@ -198,18 +252,47 @@ export async function searchFighters(name) {
     }
 }
 
-export async function getFighterFights(fighterId) {
-    try {
-        const requests = AVAILABLE_SEASONS.map(season =>
-            fetch(`${BASE_URL}/fights?fighter=${fighterId}&season=${season}`, { headers: HEADERS })
-                .then(r => r.json())
+/**
+ * Historial completo de un peleador (todas las temporadas que expone la API),
+ * en formato crudo y ordenado de más nuevo a más viejo.
+ *
+ * La API exige el parámetro `season` junto con `fighter`, así que hay que pedir
+ * una temporada por vez. El resultado se cachea por peleador para no repetir
+ * ese costo en cada vista.
+ */
+async function fetchFighterFightsRaw(fighterId) {
+    const key = String(fighterId);
+
+    const cached = fighterFightsCache.get(key);
+    if (cached && (Date.now() - cached.ts) < FIGHTER_CACHE_TTL_MS) {
+        return cached.fights;
+    }
+    // Ya hay una consulta en curso para este peleador: nos colgamos de ella.
+    if (fighterFightsInFlight.has(key)) return fighterFightsInFlight.get(key);
+
+    const promise = (async () => {
+        const requests = availableSeasons().map(season =>
+            apiFetch(`/fights?fighter=${fighterId}&season=${season}`)
                 .then(data => (hasErrors(data) ? [] : (data.response || [])))
                 .catch(() => [])
         );
         const results = await Promise.all(requests);
-        const allFights = results.flat();
-        allFights.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        return { fights: allFights, error: null };
+        const all = results.flat().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        fighterFightsCache.set(key, { ts: Date.now(), fights: all });
+        return all;
+    })();
+
+    fighterFightsInFlight.set(key, promise);
+    try {
+        return await promise;
+    } finally {
+        fighterFightsInFlight.delete(key);
+    }
+}
+
+export async function getFighterFights(fighterId) {
+    try {
+        return { fights: await fetchFighterFightsRaw(fighterId), error: null };
     } catch (error) {
         console.error('[adapter-api-sports] Error getting fighter fights:', error);
         return { fights: [], error: 'Error al cargar peleas' };
@@ -218,26 +301,38 @@ export async function getFighterFights(fighterId) {
 
 export async function getUpcomingFights(limit = 10) {
     const all = await fetchSeasonFights();
-    const nowSec = demoNowSec();
+    const now = nowSec();
     const upcoming = all
-        .filter(f => f.timestamp && f.timestamp > nowSec)
+        .filter(f => f.timestamp && f.timestamp > now)
         .sort((a, b) => a.timestamp - b.timestamp);
     return { fights: upcoming.slice(0, limit), error: null };
 }
 
+/**
+ * ¿La pelea cruda tiene un resultado real? Debe estar finalizada (status FT) y
+ * tener un ganador cargado. Esto descarta las peleas canceladas o que "nunca
+ * pasaron": el dataset las trae con fecha pasada pero sin ganador, y sin este
+ * filtro se colaban en "resultados recientes" mostrando una pelea en blanco.
+ */
+function hasRealResult(f) {
+    const finished = (f.status?.short || '').toUpperCase() === 'FT';
+    const hasWinner = f.fighters?.first?.winner === true || f.fighters?.second?.winner === true;
+    return finished && hasWinner;
+}
+
 export async function getRecentResults(limit = 10) {
     const all = await fetchSeasonFights();
-    const nowSec = demoNowSec();
+    const now = nowSec();
     const recent = all
-        .filter(f => f.timestamp && f.timestamp < nowSec)
+        .filter(f => f.timestamp && f.timestamp < now && hasRealResult(f))
         .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     return { fights: recent.slice(0, limit), error: null };
 }
 
 export async function getNextEvent() {
     const all = await fetchSeasonFights();
-    const nowSec = demoNowSec();
-    const upcoming = all.filter(f => f.timestamp && f.timestamp > nowSec);
+    const now = nowSec();
+    const upcoming = all.filter(f => f.timestamp && f.timestamp > now);
     if (upcoming.length === 0) return { event: null, error: null };
 
     const groups = new Map();
@@ -270,39 +365,9 @@ export async function getNextEvent() {
     return { event: nextEvent, error: null };
 }
 
-/**
- * Adelanta una fecha por DEMO_YEAR_OFFSET años. Usado para "remapear" peleas
- * del dataset viejo de la API-Sports a fechas reales en el futuro, así el
- * sistema de predicciones (que valida `fight_date > now()` en SQL y JS) no
- * rechaza peleas que en demo-time son futuras pero en tiempo real ya pasaron.
- */
-function shiftDateByDemoOffset(timestampSec) {
-    if (!timestampSec) return null;
-    const d = new Date(timestampSec * 1000);
-    if (DEMO_YEAR_OFFSET > 0) d.setFullYear(d.getFullYear() + DEMO_YEAR_OFFSET);
-    return d.toISOString();
-}
-
-/**
- * En demo mode, peleas "futuras en demo-time" se simulan como `scheduled`
- * sin resultado y con fecha adelantada al futuro real. Así se pueden predecir.
- *
- * La API-Sports free tier solo expone temporadas 2022-2024, así que peleas
- * de "el próximo sábado en demo-time" en realidad ya ocurrieron hace ~2 años
- * y vienen con winner cargado. El admin puede resolver manualmente cada pelea
- * vía `admin_resolve_fight` RPC para simular el cierre del evento.
- */
-function adjustForDemoMode(internal, raw) {
-    if (DEMO_YEAR_OFFSET <= 0) return internal;
-    if (!raw.timestamp) return internal;
-    if (raw.timestamp <= demoNowSec()) return internal;
-
-    return {
-        ...internal,
-        status: FIGHT_STATUS.SCHEDULED,
-        result: null,
-        dateIso: shiftDateByDemoOffset(raw.timestamp)
-    };
+/** Timestamp (segundos) → ISO date, o null. */
+function tsToIso(timestampSec) {
+    return timestampSec ? new Date(timestampSec * 1000).toISOString() : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -483,7 +548,7 @@ function cleanAndSortRawFights(rawFights, slug) {
     cleaned = dedupByFighter(cleaned);
     cleaned = dedupByPair(cleaned);
 
-    const fights = cleaned.map((raw) => adjustForDemoMode(mapRawFightToInternal(raw), raw));
+    const fights = cleaned.map((raw) => mapRawFightToInternal(raw));
     const mainEventNames = parseMainEventFromSlug(slug);
     return sortByCardOrder(fights, mainEventNames);
 }
@@ -494,10 +559,7 @@ export async function getNextEventFights() {
 
     const sortedFights = cleanAndSortRawFights(event.rawFights, event.slug);
 
-    // El header del evento usa la misma fecha adelantada para mantener coherencia
-    const eventDateIso = DEMO_YEAR_OFFSET > 0
-        ? shiftDateByDemoOffset(event.timestamp)
-        : (event.timestamp ? new Date(event.timestamp * 1000).toISOString() : null);
+    const eventDateIso = tsToIso(event.timestamp);
 
     return {
         event: {
@@ -524,9 +586,7 @@ export async function getEventBySlug(slug) {
 
     const sortedFights = cleanAndSortRawFights(raw, slug);
     const baseTs = pickBaseTimestamp(raw);
-    const eventDateIso = DEMO_YEAR_OFFSET > 0
-        ? shiftDateByDemoOffset(baseTs)
-        : (baseTs ? new Date(baseTs * 1000).toISOString() : null);
+    const eventDateIso = tsToIso(baseTs);
 
     return {
         event: {
@@ -550,15 +610,26 @@ export async function getFightById(providerFightId) {
     const all = await fetchSeasonFights();
     const raw = all.find(f => String(f.id) === String(providerFightId));
     if (!raw) return { fight: null, error: null };
-    return { fight: adjustForDemoMode(mapRawFightToInternal(raw), raw), error: null };
+    return { fight: mapRawFightToInternal(raw), error: null };
 }
 
 /**
  * Trae el detalle completo de un peleador (altura, peso, alcance, postura,
- * edad, equipo, etc.). El plan free de API-Sports responde de forma fiable a
- * /fighters?search=<nombre>, así que buscamos por nombre y matcheamos por id.
+ * edad, equipo, etc.).
+ *
+ * Se consulta primero por id, que es exacto. Si no devuelve nada, se cae a la
+ * búsqueda por nombre y se matchea por id (o se toma el primer resultado).
  */
 export async function getFighterById(id, name = null) {
+    try {
+        const data = await apiFetch(`/fighters?id=${id}`);
+        if (!hasErrors(data) && Array.isArray(data.response) && data.response[0]) {
+            return { fighter: data.response[0], error: null };
+        }
+    } catch (e) {
+        console.error('[adapter-api-sports] getFighterById error:', e);
+    }
+
     if (name) {
         const { fighters } = await searchFighters(name);
         const list = fighters || [];
@@ -566,49 +637,42 @@ export async function getFighterById(id, name = null) {
         if (exact) return { fighter: exact, error: null };
         if (list.length > 0) return { fighter: list[0], error: null };
     }
-    try {
-        const res = await fetch(`${BASE_URL}/fighters?id=${id}`, { headers: HEADERS });
-        const data = await res.json();
-        if (!hasErrors(data) && Array.isArray(data.response) && data.response[0]) {
-            return { fighter: data.response[0], error: null };
-        }
-    } catch (e) {
-        console.error('[adapter-api-sports] getFighterById error:', e);
-    }
     return { fighter: null, error: null };
 }
 
 /**
- * Calcula el récord (V-D-E) de un peleador y sus últimas peleas a partir del
- * cache de temporadas que ya se carga para el evento (vía fetchSeasonFights).
- * No hace requests extra: reutiliza las 2 temporadas cacheadas. Cubre menos
- * historia que un pull completo, pero alcanza mientras la app no necesite
- * datos 100% actualizados (todavía no está en mercado).
+ * Récord (V-D-E) de un peleador y sus últimas peleas.
+ *
+ * Se calcula sobre el historial completo del peleador (todas las temporadas que
+ * expone la API), no sobre el caché del evento en curso: así el récord refleja
+ * su trayectoria y no solo las peleas de la temporada actual. El historial va
+ * cacheado por peleador, con lo cual esto no dispara requests extra cuando la
+ * vista ya pidió sus peleas.
+ *
+ * OJO: la API arranca en 2022, así que este récord cubre de esa temporada en
+ * adelante — no es el récord de carrera de un peleador veterano.
  */
 export async function getFighterRecord(id) {
     if (!id) return { record: null, recent: [], error: null };
 
-    const all = await fetchSeasonFights();
-    const mine = all
-        .filter((f) => {
-            const a = f.fighters?.first?.id;
-            const b = f.fighters?.second?.id;
-            return String(a) === String(id) || String(b) === String(id);
-        })
-        .sort((x, y) => (y.timestamp || 0) - (x.timestamp || 0));
+    const mine = await fetchFighterFightsRaw(id);
 
     const finished = mine.filter((f) => (f.status?.short || '').toUpperCase() === 'FT');
-    let wins = 0, losses = 0, draws = 0;
+    let wins = 0, losses = 0, draws = 0, sinDato = 0;
     for (const f of finished) {
         const isF1 = f.fighters?.first && String(f.fighters.first.id) === String(id);
         const me = isF1 ? f.fighters.first : f.fighters.second;
         const opp = isF1 ? f.fighters.second : f.fighters.first;
+
         if (me?.winner === true) wins++;
         else if (opp?.winner === true) losses++;
-        else draws++;
+        else if (me?.winner === false && opp?.winner === false) draws++;
+        // Ambos en null: el dataset no cargó el resultado. No es un empate,
+        // así que se descarta en lugar de ensuciar el récord.
+        else sinDato++;
     }
     return {
-        record: { wins, losses, draws, total: finished.length },
+        record: { wins, losses, draws, total: finished.length - sinDato },
         recent: mine.slice(0, 5),
         error: null
     };

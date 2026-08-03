@@ -197,10 +197,19 @@
 
                             <!-- Fighters matchup -->
                             <div class="flex items-center gap-2 sm:gap-4">
-                                <!-- Fighter 1 -->
-                                <div class="flex-1 flex items-center gap-2 sm:gap-3 min-w-0" :class="{ 'opacity-50': fight.status?.short === 'FT' && !fight.fighters?.first?.winner }">
-                                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border bg-zinc-700 shrink-0"
-                                         :class="fight.fighters?.first?.winner ? 'border-green-500' : 'border-zinc-600'">
+                                <!-- Fighter 1 · resaltado si es el del perfil, enlace si es el rival -->
+                                <component
+                                    :is="isOpponent(fight.fighters?.first) ? 'RouterLink' : 'div'"
+                                    :to="opponentRoute(fight.fighters?.first)"
+                                    :title="isOpponent(fight.fighters?.first) ? `Ver perfil de ${fight.fighters?.first?.name}` : null"
+                                    class="flex-1 flex items-center gap-2 sm:gap-3 min-w-0 group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]"
+                                    :class="{ 'opacity-60': isOpponent(fight.fighters?.first) }"
+                                >
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 bg-zinc-700 shrink-0 transition-colors"
+                                         :class="[
+                                            isViewing(fight.fighters?.first) ? outcomeBorderClass(fight) : 'border-zinc-600',
+                                            isOpponent(fight.fighters?.first) ? 'group-hover:border-[#D4AF37]' : ''
+                                         ]">
                                         <img
                                             v-if="fight.fighters?.first?.logo"
                                             :src="fight.fighters.first.logo"
@@ -210,28 +219,51 @@
                                         />
                                     </div>
                                     <div class="min-w-0">
-                                        <p class="text-xs sm:text-sm font-medium truncate"
-                                           :class="fight.fighters?.first?.winner ? 'text-green-400' : 'text-white'">
+                                        <p class="text-xs sm:text-sm truncate transition-colors"
+                                           :class="[
+                                                isViewing(fight.fighters?.first) ? `font-bold ${outcomeTextClass(fight)}` : 'font-medium text-gray-300',
+                                                isOpponent(fight.fighters?.first) ? 'group-hover:text-[#D4AF37]' : ''
+                                           ]">
                                             {{ fight.fighters?.first?.name }}
                                         </p>
-                                        <p v-if="fight.fighters?.first?.winner && fight.status?.short === 'FT'" class="text-[10px] text-green-500 font-semibold">WIN</p>
+                                        <p v-if="isViewing(fight.fighters?.first) && outcomeBadge(fight)"
+                                           class="text-[10px] font-bold"
+                                           :class="outcomeBadge(fight).cls">
+                                            {{ outcomeBadge(fight).label }}
+                                        </p>
                                     </div>
-                                </div>
+                                </component>
 
                                 <!-- VS -->
                                 <div class="shrink-0 text-xs font-bold text-gray-600 px-1">VS</div>
 
-                                <!-- Fighter 2 -->
-                                <div class="flex-1 flex items-center gap-2 sm:gap-3 justify-end min-w-0" :class="{ 'opacity-50': fight.status?.short === 'FT' && !fight.fighters?.second?.winner }">
+                                <!-- Fighter 2 · resaltado si es el del perfil, enlace si es el rival -->
+                                <component
+                                    :is="isOpponent(fight.fighters?.second) ? 'RouterLink' : 'div'"
+                                    :to="opponentRoute(fight.fighters?.second)"
+                                    :title="isOpponent(fight.fighters?.second) ? `Ver perfil de ${fight.fighters?.second?.name}` : null"
+                                    class="flex-1 flex items-center gap-2 sm:gap-3 justify-end min-w-0 group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]"
+                                    :class="{ 'opacity-60': isOpponent(fight.fighters?.second) }"
+                                >
                                     <div class="min-w-0 text-right">
-                                        <p class="text-xs sm:text-sm font-medium truncate"
-                                           :class="fight.fighters?.second?.winner ? 'text-green-400' : 'text-white'">
+                                        <p class="text-xs sm:text-sm truncate transition-colors"
+                                           :class="[
+                                                isViewing(fight.fighters?.second) ? `font-bold ${outcomeTextClass(fight)}` : 'font-medium text-gray-300',
+                                                isOpponent(fight.fighters?.second) ? 'group-hover:text-[#D4AF37]' : ''
+                                           ]">
                                             {{ fight.fighters?.second?.name }}
                                         </p>
-                                        <p v-if="fight.fighters?.second?.winner && fight.status?.short === 'FT'" class="text-[10px] text-green-500 font-semibold">WIN</p>
+                                        <p v-if="isViewing(fight.fighters?.second) && outcomeBadge(fight)"
+                                           class="text-[10px] font-bold"
+                                           :class="outcomeBadge(fight).cls">
+                                            {{ outcomeBadge(fight).label }}
+                                        </p>
                                     </div>
-                                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border bg-zinc-700 shrink-0"
-                                         :class="fight.fighters?.second?.winner ? 'border-green-500' : 'border-zinc-600'">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 bg-zinc-700 shrink-0 transition-colors"
+                                         :class="[
+                                            isViewing(fight.fighters?.second) ? outcomeBorderClass(fight) : 'border-zinc-600',
+                                            isOpponent(fight.fighters?.second) ? 'group-hover:border-[#D4AF37]' : ''
+                                         ]">
                                         <img
                                             v-if="fight.fighters?.second?.logo"
                                             :src="fight.fighters.second.logo"
@@ -240,7 +272,7 @@
                                             @error="$event.target.style.display='none'"
                                         />
                                     </div>
-                                </div>
+                                </component>
                             </div>
 
                             <!-- Fight details row -->
@@ -358,7 +390,7 @@
 </template>
 
 <script>
-import { searchFighters, getFighterFights, buildFightId } from '../services/sports/index.js';
+import { searchFighters, getFighterFights, getFighterById, buildFightId } from '../services/sports/index.js';
 import { formatMediumDate, formatDateTime } from '../utils/format.js';
 
 // Cuántas peleas del historial se muestran por "página" de render.
@@ -389,6 +421,71 @@ export default {
         }
     },
     methods: {
+        /**
+         * ¿Este peleador de la fila del historial es el rival (y no el que se
+         * está viendo)? Solo el rival se muestra como enlace.
+         */
+        isOpponent(f) {
+            if (!f?.id) return false;
+            return String(f.id) !== String(this.selectedFighter?.id);
+        },
+        /** ¿Es el peleador cuyo historial se está mirando? */
+        isViewing(f) {
+            if (!f?.id || !this.selectedFighter?.id) return false;
+            return String(f.id) === String(this.selectedFighter.id);
+        },
+        /**
+         * Resultado de la pelea DESDE EL PUNTO DE VISTA del peleador que se
+         * está mirando: 'win' | 'loss' | 'draw' | null (aún sin resultado).
+         *
+         * El historial se lee en primera persona: importa si ganó o perdió el
+         * peleador del perfil, no cuál de los dos slots venció.
+         */
+        outcomeFor(fight) {
+            if (fight?.status?.short !== 'FT') return null;
+            const first = fight.fighters?.first;
+            const second = fight.fighters?.second;
+            const meIsFirst = this.isViewing(first);
+            const meIsSecond = this.isViewing(second);
+            if (!meIsFirst && !meIsSecond) return null;
+
+            const me = meIsFirst ? first : second;
+            const opp = meIsFirst ? second : first;
+            if (me?.winner === true) return 'win';
+            if (opp?.winner === true) return 'loss';
+            if (me?.winner === false && opp?.winner === false) return 'draw';
+            return null; // resultado no cargado en el dataset
+        },
+        /** Etiqueta y color del badge de resultado. */
+        outcomeBadge(fight) {
+            switch (this.outcomeFor(fight)) {
+                case 'win':  return { label: 'WIN',    cls: 'text-green-500' };
+                case 'loss': return { label: 'LOSS',   cls: 'text-[#C41E3A]' };
+                case 'draw': return { label: 'EMPATE', cls: 'text-gray-400' };
+                default:     return null;
+            }
+        },
+        /** Color del nombre del peleador que se está mirando, según resultado. */
+        outcomeTextClass(fight) {
+            switch (this.outcomeFor(fight)) {
+                case 'win':  return 'text-green-400';
+                case 'loss': return 'text-[#C41E3A]';
+                default:     return 'text-white';
+            }
+        },
+        /** Color del borde de la foto del peleador que se está mirando. */
+        outcomeBorderClass(fight) {
+            switch (this.outcomeFor(fight)) {
+                case 'win':  return 'border-green-500';
+                case 'loss': return 'border-[#C41E3A]';
+                default:     return 'border-[#D4AF37]';
+            }
+        },
+        /** Ruta al perfil del rival (o undefined si no corresponde enlazar). */
+        opponentRoute(f) {
+            if (!this.isOpponent(f)) return undefined;
+            return { path: '/peleadores', query: { id: f.id, nombre: f.name || '' } };
+        },
         showMoreFights() {
             this.fightsShown += FIGHTS_RENDER_STEP;
         },
@@ -442,16 +539,23 @@ export default {
          * Carga un peleador directamente por su ID (usado cuando se navega
          * a /peleadores?id=XXX desde el buscador global del header).
          */
-        async loadFighterById(id) {
+        async loadFighterById(id, name = null) {
             if (!id) return;
             this.loading = true;
             this.error = null;
             this.fightsShown = FIGHTS_RENDER_STEP;
             try {
-                // Truco: searchFighters por su nombre devolvería muchos —
-                // mejor consultar las peleas y derivar el peleador desde ahí.
-                // Pero API-Sports no expone /fighters/:id en el plan free;
-                // como workaround usamos las peleas para obtener nombre/foto.
+                // 1) Ficha completa (peleadores semilla y, si responde, del proveedor).
+                const { fighter } = await getFighterById(id, name);
+                if (fighter) {
+                    this.selectedFighter = fighter;
+                    const { fights } = await getFighterFights(id);
+                    this.fights = fights || [];
+                    return;
+                }
+
+                // 2) Fallback: API-Sports no expone /fighters/:id en el plan free,
+                // así que derivamos nombre/foto desde las peleas del peleador.
                 const { fights } = await getFighterFights(id);
                 if (fights && fights.length > 0) {
                     const sample = fights[0];
@@ -541,13 +645,18 @@ export default {
         }
     },
     watch: {
+        // Navegar de un peleador a su rival reusa esta misma vista, así que el
+        // cambio se detecta por la query en lugar de por el ciclo de montaje.
         '$route.query.id'(newId) {
-            if (newId) this.loadFighterById(newId);
+            if (!newId) return;
+            this.loadFighterById(newId, this.$route.query.nombre || null);
+            // La ficha nueva arranca desde arriba, no desde donde estaba el historial.
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
     mounted() {
-        const id = this.$route.query.id;
-        if (id) this.loadFighterById(id);
+        const { id, nombre } = this.$route.query;
+        if (id) this.loadFighterById(id, nombre || null);
     },
     beforeUnmount() {
         clearTimeout(this.searchTimeout);

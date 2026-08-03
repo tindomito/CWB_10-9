@@ -48,10 +48,17 @@
                         <div class="grid grid-cols-[1fr_auto_1fr] items-start gap-2 sm:gap-4">
                             <!-- Peleador 1 -->
                             <div class="flex flex-col items-center text-center">
-                                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-amber-500/60 bg-zinc-800">
-                                    <img v-if="fight.fighter1.photo" :src="fight.fighter1.photo" :alt="fight.fighter1.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
-                                </div>
-                                <h2 class="mt-3 text-base sm:text-xl font-black text-white uppercase leading-tight">{{ fight.fighter1.name || 'TBD' }}</h2>
+                                <component
+                                    :is="fight.fighter1.externalId ? 'RouterLink' : 'div'"
+                                    :to="fighterLink(fight.fighter1)"
+                                    class="flex flex-col items-center group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-lg"
+                                    :title="fight.fighter1.externalId ? `Ver perfil de ${fight.fighter1.name}` : null"
+                                >
+                                    <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-amber-500/60 bg-zinc-800 group-hover:border-amber-400 transition-colors">
+                                        <img v-if="fight.fighter1.photo" :src="fight.fighter1.photo" :alt="fight.fighter1.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                                    </div>
+                                    <h2 class="mt-3 text-base sm:text-xl font-black text-white uppercase leading-tight group-hover:text-amber-400 transition-colors">{{ fight.fighter1.name || 'TBD' }}</h2>
+                                </component>
                                 <p v-if="detailA?.nickname" class="text-amber-500 text-xs font-medium">"{{ detailA.nickname }}"</p>
                                 <p v-if="recordA" class="mt-1 text-sm font-mono font-bold text-gray-200">{{ recordLabel(recordA) }}</p>
                                 <div v-if="recentA.length" class="flex gap-1 mt-2">
@@ -66,10 +73,17 @@
 
                             <!-- Peleador 2 -->
                             <div class="flex flex-col items-center text-center">
-                                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-red-500/60 bg-zinc-800">
-                                    <img v-if="fight.fighter2.photo" :src="fight.fighter2.photo" :alt="fight.fighter2.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
-                                </div>
-                                <h2 class="mt-3 text-base sm:text-xl font-black text-white uppercase leading-tight">{{ fight.fighter2.name || 'TBD' }}</h2>
+                                <component
+                                    :is="fight.fighter2.externalId ? 'RouterLink' : 'div'"
+                                    :to="fighterLink(fight.fighter2)"
+                                    class="flex flex-col items-center group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded-lg"
+                                    :title="fight.fighter2.externalId ? `Ver perfil de ${fight.fighter2.name}` : null"
+                                >
+                                    <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-red-500/60 bg-zinc-800 group-hover:border-red-400 transition-colors">
+                                        <img v-if="fight.fighter2.photo" :src="fight.fighter2.photo" :alt="fight.fighter2.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                                    </div>
+                                    <h2 class="mt-3 text-base sm:text-xl font-black text-white uppercase leading-tight group-hover:text-red-400 transition-colors">{{ fight.fighter2.name || 'TBD' }}</h2>
+                                </component>
                                 <p v-if="detailB?.nickname" class="text-amber-500 text-xs font-medium">"{{ detailB.nickname }}"</p>
                                 <p v-if="recordB" class="mt-1 text-sm font-mono font-bold text-gray-200">{{ recordLabel(recordB) }}</p>
                                 <div v-if="recentB.length" class="flex gap-1 mt-2">
@@ -224,6 +238,11 @@ export default {
         }
     },
     methods: {
+        /** Ruta al perfil del peleador (o null si no tiene id del proveedor). */
+        fighterLink(fighter) {
+            if (!fighter?.externalId) return null;
+            return { path: '/peleadores', query: { id: fighter.externalId, nombre: fighter.name || '' } };
+        },
         async load() {
             this.loading = true;
             this.loadingDetails = true;

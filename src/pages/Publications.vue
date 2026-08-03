@@ -487,7 +487,7 @@ export default {
                 const { success, error } = await deletePublication(publicationId);
 
                 if (error) {
-                    this.toastError('Error al eliminar la publicación');
+                    this.toastError(error.message || 'Error al eliminar la publicación');
                     return;
                 }
 

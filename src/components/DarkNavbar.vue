@@ -206,8 +206,8 @@ export default {
   components: { NotificationsBell, UnifiedSearch },
   setup() {
     const { isAuthenticated, loading, userEmail, userDisplayName, userId, clearUser, initialize } = useAuth();
-    const { avatarUrl } = useProfile();
-    return { isAuthenticated, loading, userEmail, userDisplayName, userId, avatarUrl, clearUser, initialize };
+    const { avatarUrl, clearCurrentProfile } = useProfile();
+    return { isAuthenticated, loading, userEmail, userDisplayName, userId, avatarUrl, clearUser, clearCurrentProfile, initialize };
   },
   data() {
     return {
@@ -239,6 +239,7 @@ export default {
         const { error } = await logout();
         if (error) console.error('Error during logout:', error);
         this.clearUser();
+        this.clearCurrentProfile();
         this.$router.push('/');
       } catch (error) {
         console.error('Unexpected error during logout:', error);

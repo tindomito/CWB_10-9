@@ -74,8 +74,13 @@ export async function updateRanking(id, { division, entries, isPublic }) {
 
 export async function deleteRanking(id) {
     try {
-        const { error } = await supabase.from('fighter_rankings').delete().eq('id', id);
+        // `.select()` para detectar el borrado rechazado por RLS (0 filas, sin error).
+        const { data: deleted, error } = await supabase
+            .from('fighter_rankings').delete().eq('id', id).select('id');
         if (error) return { success: false, error };
+        if (!deleted || deleted.length === 0) {
+            return { success: false, error: { message: 'No se pudo borrar el ranking: no existe o no tenés permisos.' } };
+        }
         return { success: true, error: null };
     } catch (e) {
         return { success: false, error: { message: e.message || 'Error al borrar ranking' } };

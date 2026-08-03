@@ -24,7 +24,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import DarkNavbar from './components/DarkNavbar.vue';
 import BottomNavbar from './components/BottomNavbar.vue';
@@ -47,23 +47,36 @@ const tramaClass = computed(() => {
         : 'trama-oro-negro';
 });
 
-// Carga el perfil del usuario si está autenticado
-async function loadProfileIfAuthenticated() {
-    if (isAuthenticated.value) {
-        // Importar dinámicamente para evitar dependencias circulares
-        const { useProfile } = await import('./composables/useProfile.js');
-        const { loadCurrentProfile } = useProfile();
-        try {
-            await loadCurrentProfile();
-        } catch (error) {
-            console.error('Error loading user profile:', error);
-        }
+/**
+ * Mantiene el perfil en memoria alineado con la sesión activa: lo carga al
+ * iniciar sesión y lo descarta al cerrarla.
+ *
+ * El estado del composable vive a nivel de módulo (es compartido por toda la
+ * app) y la SPA no se recarga al cambiar de cuenta. Sin esta sincronización,
+ * los datos del usuario anterior sobreviven al logout — la navbar seguiría
+ * mostrando su avatar — y los del nuevo no se cargarían hasta refrescar.
+ */
+async function syncProfileWithSession() {
+    // Import dinámico para evitar dependencias circulares.
+    const { useProfile } = await import('./composables/useProfile.js');
+    const { loadCurrentProfile, clearCurrentProfile } = useProfile();
+
+    if (!isAuthenticated.value) {
+        clearCurrentProfile();
+        return;
+    }
+    try {
+        await loadCurrentProfile();
+    } catch (error) {
+        console.error('Error loading user profile:', error);
     }
 }
+
+watch(isAuthenticated, syncProfileWithSession);
 
 onMounted(async () => {
     // Inicializar el sistema de autenticación
     await initialize();
-    await loadProfileIfAuthenticated();
+    await syncProfileWithSession();
 });
 </script>

@@ -57,15 +57,29 @@
                 </div>
 
                 <div v-else class="divide-y divide-zinc-800">
-                    <div v-for="(entry, idx) in entries" :key="idx" class="flex items-center gap-2 px-3 py-2">
-                        <!-- Posición -->
-                        <span class="w-8 text-center text-xs font-bold shrink-0" :class="idx === 0 ? 'text-[#D4AF37]' : 'text-gray-500'">
-                            {{ idx === 0 ? '👑' : '#' + idx }}
-                        </span>
-                        <!-- Foto -->
-                        <div class="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 overflow-hidden shrink-0 flex items-center justify-center">
-                            <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
-                            <span v-else class="text-[9px] text-gray-500 font-bold">{{ initials(entry.name) }}</span>
+                    <div
+                        v-for="(entry, idx) in entries"
+                        :key="idx"
+                        :data-row-index="idx"
+                        class="flex items-center gap-2 px-3 py-2 transition-colors"
+                        :class="{ 'bg-zinc-800/70 ring-1 ring-inset ring-[#D4AF37]/60': idx === dragIndex }"
+                    >
+                        <!-- Handle de arrastre: número + foto -->
+                        <div
+                            class="drag-handle flex items-center gap-2 shrink-0 cursor-grab active:cursor-grabbing select-none"
+                            @pointerdown="startDrag(idx, $event)"
+                            :title="'Arrastrá para reordenar'"
+                            aria-label="Arrastrá para reordenar"
+                        >
+                            <!-- Posición -->
+                            <span class="w-8 text-center text-xs font-bold" :class="idx === 0 ? 'text-[#D4AF37]' : 'text-gray-500'">
+                                {{ idx === 0 ? '👑' : '#' + idx }}
+                            </span>
+                            <!-- Foto -->
+                            <div class="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 overflow-hidden flex items-center justify-center">
+                                <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" draggable="false" class="w-full h-full object-cover pointer-events-none" @error="$event.target.style.display='none'" />
+                                <span v-else class="text-[9px] text-gray-500 font-bold">{{ initials(entry.name) }}</span>
+                            </div>
                         </div>
                         <!-- Nombre editable -->
                         <input
@@ -166,7 +180,11 @@ export default {
             // Confirmación de "reemplazar lista actual"
             showReplaceConfirm: false,
             pendingAction: null,       // 'division' | 'reload'
-            lastGoodDivision: ''       // división reflejada en la lista (para revertir el select al cancelar)
+            lastGoodDivision: '',      // división reflejada en la lista (para revertir el select al cancelar)
+            // Drag & drop
+            dragIndex: null,           // índice de la fila que se está arrastrando
+            _onPointerMove: null,
+            _onPointerUp: null
         };
     },
     computed: {
@@ -231,6 +249,42 @@ export default {
             } finally {
                 this.loadingFighters = false;
             }
+        },
+        // -------------------------------------------------------------------
+        // Reordenar por drag & drop (Pointer Events: mouse + touch unificados)
+        // -------------------------------------------------------------------
+        startDrag(idx, ev) {
+            // Solo botón primario del mouse (o touch/lápiz).
+            if (ev.button != null && ev.button > 0) return;
+            this.dragIndex = idx;
+            this._onPointerMove = (e) => this.onDragMove(e);
+            this._onPointerUp = () => this.endDrag();
+            window.addEventListener('pointermove', this._onPointerMove, { passive: false });
+            window.addEventListener('pointerup', this._onPointerUp);
+            window.addEventListener('pointercancel', this._onPointerUp);
+        },
+        onDragMove(e) {
+            if (this.dragIndex === null) return;
+            e.preventDefault(); // evita selección de texto / scroll durante el arrastre
+            const target = document.elementFromPoint(e.clientX, e.clientY);
+            const rowEl = target && target.closest('[data-row-index]');
+            if (!rowEl) return;
+            const overIdx = Number(rowEl.dataset.rowIndex);
+            if (Number.isNaN(overIdx) || overIdx === this.dragIndex) return;
+            this.moveItem(this.dragIndex, overIdx);
+            this.dragIndex = overIdx; // la fila arrastrada ahora vive en la posición nueva
+        },
+        endDrag() {
+            this.dragIndex = null;
+            window.removeEventListener('pointermove', this._onPointerMove);
+            window.removeEventListener('pointerup', this._onPointerUp);
+            window.removeEventListener('pointercancel', this._onPointerUp);
+            this._onPointerMove = this._onPointerUp = null;
+        },
+        moveItem(from, to) {
+            const arr = this.entries;
+            const [item] = arr.splice(from, 1);
+            arr.splice(to, 0, item);
         },
         moveUp(idx) {
             if (idx === 0) return;
@@ -300,6 +354,18 @@ export default {
         if (id) {
             await this.loadForEdit(id);
         }
+    },
+    beforeUnmount() {
+        // Por si el componente se desmonta en pleno arrastre.
+        if (this.dragIndex !== null) this.endDrag();
     }
 };
 </script>
+
+<style scoped>
+/* El handle no debe disparar el scroll del navegador al arrastrar en touch:
+   así el gesto queda para reordenar y no para desplazar la página. */
+.drag-handle {
+    touch-action: none;
+}
+</style>

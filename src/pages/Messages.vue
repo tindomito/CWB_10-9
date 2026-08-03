@@ -122,7 +122,7 @@
             <RouterLink
               v-if="item._type === 'group'"
               :to="{ name: 'GroupChat', params: { id: item.id } }"
-              class="flex items-center gap-4 p-4 hover:bg-zinc-800 transition duration-200"
+              class="chat-grupo flex items-center gap-4 p-4 hover:bg-zinc-800 transition duration-200"
             >
               <div class="flex-shrink-0 relative">
                 <div class="h-14 w-14 rounded-full bg-gradient-to-br from-[#7A0A1C] to-[#C41E3A] flex items-center justify-center overflow-hidden">
@@ -159,7 +159,7 @@
             <RouterLink
               v-else
               :to="chatRoute(item)"
-              class="flex items-center gap-4 p-4 hover:bg-zinc-800 transition duration-200"
+              class="chat-directo flex items-center gap-4 p-4 hover:bg-zinc-800 transition duration-200"
             >
               <div class="flex-shrink-0">
                 <div class="h-14 w-14 rounded-full bg-gradient-to-br from-[#7A0A1C] to-[#C41E3A] flex items-center justify-center">
@@ -381,3 +381,31 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+/*
+  Diferenciador visual de los chats en la lista, además del texto/badge:
+  cada tipo lleva el panal octagonal de marca (mismo tile 168×168 que la
+  trama global) en un color distinto y muy sutil.
+    · Grupos       → panal borgoña (#7A0A1C), acompaña a la "G".
+    · Chats 1 a 1  → panal oro (#D4AF37), en sintonía con la trama oro
+                     del fondo global de esta pantalla.
+  El tinte va como capa de imagen (no background-color) para que el
+  hover:bg-zinc-800 siga funcionando por detrás.
+*/
+.chat-grupo {
+  background-image:
+    linear-gradient(0deg, rgba(122, 10, 28, 0.05), rgba(122, 10, 28, 0.05)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='168' height='168' viewBox='0 0 168 168'%3E%3Cg fill='none' stroke='%237A0A1C' stroke-opacity='0.10' stroke-width='3'%3E%3Cpolygon points='68,8 132,8 168,44 168,108 132,144 68,144 32,108 32,44'/%3E%3Cpolygon points='-16,8 48,8 84,44 84,108 48,144 -16,144 -52,108 -52,44'/%3E%3Cpolygon points='152,8 216,8 252,44 252,108 216,144 152,144 116,108 116,44'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat, repeat;
+  background-size: auto, 126px 126px;
+}
+
+.chat-directo {
+  background-image:
+    linear-gradient(0deg, rgba(212, 175, 55, 0.02), rgba(212, 175, 55, 0.02)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='168' height='168' viewBox='0 0 168 168'%3E%3Cg fill='none' stroke='%23D4AF37' stroke-opacity='0.05' stroke-width='3'%3E%3Cpolygon points='68,8 132,8 168,44 168,108 132,144 68,144 32,108 32,44'/%3E%3Cpolygon points='-16,8 48,8 84,44 84,108 48,144 -16,144 -52,108 -52,44'/%3E%3Cpolygon points='152,8 216,8 252,44 252,108 216,144 152,144 116,108 116,44'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat, repeat;
+  background-size: auto, 126px 126px;
+}
+</style>

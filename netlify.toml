@@ -1,0 +1,39 @@
+# Configuración de despliegue en Netlify.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# El router usa modo `history` (URLs limpias, sin #). Netlify busca un archivo
+# por cada ruta y no lo encuentra: entrar directo a /predicciones o recargar en
+# /perfil/alguien daría 404. Esta regla sirve siempre index.html y deja que Vue
+# Router resuelva la ruta del lado del cliente.
+#
+# El status 200 (y no 301) es importante: reescribe sin redirigir, así la URL
+# que ve el usuario no cambia.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Los assets llevan hash en el nombre (index-BvRXF9L3.js), así que se pueden
+# cachear de forma agresiva: si el contenido cambia, cambia el nombre.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# El service worker y el manifest no deben cachearse: son el mecanismo por el
+# que la PWA se entera de que hay una versión nueva.
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Cabeceras de seguridad básicas para todo el sitio.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"

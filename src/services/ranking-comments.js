@@ -4,13 +4,16 @@
  */
 import { supabase } from './supabase.js';
 
-export async function getRankingComments(rankingId) {
+export async function getRankingComments(rankingId, page = 0, pageSize = 50) {
     try {
+        const from = page * pageSize;
+        const to = from + pageSize - 1;
         const { data, error } = await supabase
             .from('ranking_comments_with_users')
             .select('*')
             .eq('ranking_id', rankingId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: true })
+            .range(from, to);
         if (error) return { comments: [], error };
         return { comments: data || [], error: null };
     } catch (e) {
@@ -53,8 +56,13 @@ export async function createRankingComment(rankingId, content) {
 
 export async function deleteRankingComment(commentId) {
     try {
-        const { error } = await supabase.from('ranking_comments').delete().eq('id', commentId);
+        // `.select()` para detectar el borrado rechazado por RLS (0 filas, sin error).
+        const { data: deleted, error } = await supabase
+            .from('ranking_comments').delete().eq('id', commentId).select('id');
         if (error) return { success: false, error };
+        if (!deleted || deleted.length === 0) {
+            return { success: false, error: { message: 'No se pudo borrar el comentario: no existe o no tenés permisos.' } };
+        }
         return { success: true, error: null };
     } catch (e) {
         return { success: false, error: { message: e.message || 'Error al borrar' } };

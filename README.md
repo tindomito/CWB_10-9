@@ -25,17 +25,18 @@ El proyecto es una **SPA de Vue 3** que corre enteramente en el cliente y usa **
 
 ## Requisitos previos
 
-- **Node.js** 
-- **npm** 
+- **Node.js** `^20.19.0` o `>=22.12.0` (lo exige Vite 7; probado con 22.16)
+- **npm** (viene con Node)
 
-
+No hace falta instalar ni configurar una base de datos: el backend es Supabase y ya está en la nube.
 
 ## Instalación
 
-**1. Clonar el repositorio e ingresar a la carpeta o descargar zip**
+**1. Clonar el repositorio e ingresar a la carpeta** (o descargar el zip desde GitHub)
 
 ```bash
-git clone 
+git clone https://github.com/tindomito/CWB_10-9.git
+cd CWB_10-9
 ```
 
 **2. Instalar las dependencias**
@@ -50,19 +51,36 @@ npm install
 Crear un archivo **`.env`** en la raíz del proyecto (al lado del `package.json`) con este contenido:
 
 ```env
+# Datos deportivos (API-Sports · MMA)
+VITE_MMA_API_KEY=<tu-api-key-de-api-sports>
+VITE_MMA_API_BASE_URL=https://v1.mma.api-sports.io
 
-
+# Backend (Supabase)
+VITE_SUPABASE_URL=<url-del-proyecto-supabase>
+VITE_SUPABASE_KEY=<publishable-key-del-proyecto>
 ```
 
+- **API-Sports** ([api-sports.io](https://api-sports.io/), sección MMA): de ahí salen los peleadores, eventos y peleas reales.
+- **Supabase**: URL y *publishable key* del proyecto. Se sacan del panel de Supabase, en *Project Settings → API*. Esta key es pública por diseño (viaja al navegador); el acceso real a los datos lo controla RLS en cada tabla.
+
+> **Importante:** la app consulta la **temporada en curso**, y el plan gratuito de API-Sports solo da acceso hasta 2024. Con una key del plan free las secciones de UFC se van a ver vacías. Hace falta una key de plan pago (Pro o superior).
 
 ---
 
 ## Cómo correr el proyecto
 
+**Modo desarrollo** (con recarga automática):
 
 ```bash
 npm run dev
 ```
 
 La app queda disponible en **http://localhost:5173**.
+
+**Build de producción** y previsualización del resultado:
+
+```bash
+npm run build
+npm run preview
+```
 

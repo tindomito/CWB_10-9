@@ -10,7 +10,15 @@
  * NO importa adapters de proveedor directamente — usa la fachada `./sports`.
  */
 import { supabase } from './supabase.js';
-import { getNextEventFights, FIGHT_METHODS } from './sports/index.js';
+import {
+    getNextEventFights,
+    getEventBySlug,
+    getFightById,
+    getSeedUpcomingEvents,
+    getVisibleSeedOrgs,
+    FIGHT_METHODS,
+    FIGHT_STATUS
+} from './sports/index.js';
 
 // ---------------------------------------------------------------------------
 // Sync con proveedor
@@ -89,6 +97,86 @@ export async function loadAndSyncNextEvent() {
     return { event, fights: data || [], error: null };
 }
 
+/**
+ * Sincroniza un evento (sus InternalFights) en DB y lo relee en el shape de la
+ * tabla `fights`. Reutilizado por el próximo evento UFC y por los eventos
+ * semilla de otras organizaciones.
+ */
+async function syncAndReadEvent(event, internalFights) {
+    if (!event || !internalFights?.length) return null;
+    await syncFights(internalFights);
+    const ids = internalFights.map(f => f.id);
+    const { data, error } = await supabase
+        .from('fights')
+        .select('*')
+        .in('id', ids)
+        .order('fight_date', { ascending: true });
+    if (error) return { event, fights: [], error };
+    return { event, fights: data || [], error: null };
+}
+
+/**
+ * Averigua, para una lista de peleas pendientes, cuáles ya tienen ganador según
+ * el proveedor. Devuelve un mapa fightId → externalId del ganador.
+ *
+ * NO cierra las peleas. API-Sports publica quién ganó, pero no el método ni el
+ * round, y el XP de este proyecto depende de los tres (20 + 8 + 12). Cerrar una
+ * pelea sin método dejaría a todos con 20 puntos como techo, y como las
+ * predicciones se marcan `resolved_at` una sola vez, ese XP no se recupera
+ * después. Por eso el dato del proveedor se usa solo para pre-cargar el
+ * formulario del admin, que completa método y round antes de cerrar.
+ *
+ * No consume requests extra: `getFightById` resuelve contra el caché de
+ * temporada que la app ya carga.
+ *
+ * @returns {Promise<Record<string, string>>} fightId → winnerExternalId
+ */
+export async function getSuggestedWinners(fights) {
+    const out = {};
+    if (!Array.isArray(fights) || fights.length === 0) return out;
+
+    for (const row of fights) {
+        if (row.provider !== 'api-sports') continue;
+        try {
+            const { fight } = await getFightById(row.provider_fight_id);
+            if (fight?.status === FIGHT_STATUS.FINISHED && fight.result?.winnerExternalId) {
+                out[row.id] = fight.result.winnerExternalId;
+            }
+        } catch {
+            /* si el proveedor no responde, esa pelea queda sin sugerencia */
+        }
+    }
+    return out;
+}
+
+/**
+ * Carga TODOS los eventos próximos predecibles: el próximo evento UFC (proveedor
+ * real) + los eventos semilla de las organizaciones que el usuario tenga
+ * visibles (PFL, Bellator). Cada grupo trae sus peleas en el shape de la tabla.
+ *
+ * @returns {Promise<{ groups: Array<{event, fights}>, error: object|null }>}
+ */
+export async function loadUpcomingEventGroups() {
+    const groups = [];
+
+    // 1. Próximo evento UFC (proveedor real)
+    const ufc = await loadAndSyncNextEvent();
+    if (ufc.error) return { groups: [], error: ufc.error };
+    if (ufc.event && ufc.fights.length) {
+        groups.push({ org: 'ufc', event: ufc.event, fights: ufc.fights });
+    }
+
+    // 2. Eventos semilla PRÓXIMOS de las organizaciones visibles
+    const seedEvents = getSeedUpcomingEvents(getVisibleSeedOrgs());
+    for (const ev of seedEvents) {
+        const { event, fights } = await getEventBySlug(ev.slug);
+        const group = await syncAndReadEvent(event, fights);
+        if (group && group.fights.length) groups.push({ org: ev.org, ...group });
+    }
+
+    return { groups, error: null };
+}
+
 // ---------------------------------------------------------------------------
 // Predicciones del usuario
 // ---------------------------------------------------------------------------
@@ -111,16 +199,40 @@ export async function getUserPredictionsForFights(userId, fightIds) {
  * @param {number} page - página 0-based
  * @param {number} pageSize - tamaño de página
  */
-export async function getUserPredictionsHistory(userId, page = 0, pageSize = 20) {
+export async function getUserPredictionsHistory(userId, page = 0, pageSize = 20, filters = {}) {
     if (!userId) return { predictions: [], error: null };
+
+    const { result = 'all', search = '' } = filters;
     const from = page * pageSize;
     const to = from + pageSize - 1;
-    const { data, error } = await supabase
+
+    let query = supabase
         .from('predictions_with_fights')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+
+    // Filtro por resultado. is_winner_correct es NULL mientras no se resuelve,
+    // así que "pendientes" se detecta por resolved_at.
+    if (result === 'correct') query = query.eq('is_winner_correct', true);
+    else if (result === 'incorrect') query = query.eq('is_winner_correct', false);
+    else if (result === 'pending') query = query.is('resolved_at', null);
+
+    // Búsqueda por evento o por nombre de cualquiera de los dos peleadores.
+    // Se limpian comas y paréntesis porque romperían la sintaxis del filtro
+    // `or` de PostgREST. El comodín va como `*` (no `%`), que es lo que espera
+    // PostgREST para like/ilike y evita ambigüedades al escapar la URL.
+    const term = search.trim().replace(/[,()*]/g, ' ').trim();
+    if (term) {
+        const like = `*${term}*`;
+        query = query.or(
+            `event_name.ilike.${like},fighter1_name.ilike.${like},fighter2_name.ilike.${like}`
+        );
+    }
+
+    const { data, error } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
+
     if (error) return { predictions: [], error };
     return { predictions: data || [], error: null };
 }
@@ -237,6 +349,34 @@ export async function getCommunityBreakdown(fightId) {
 // ---------------------------------------------------------------------------
 // Admin: resolver pelea manualmente
 // ---------------------------------------------------------------------------
+
+/**
+ * Peleas "colgadas": ya pasó su fecha y siguen sin resultado cargado.
+ * Se leen directo de la tabla (no del proveedor), así aparecen también las de
+ * eventos viejos que ya no se muestran en Predicciones.
+ *
+ * @param {object} opts
+ * @param {boolean} opts.onlyPastDue - solo las que ya deberían haber ocurrido
+ * @param {number} opts.limit
+ */
+export async function getPendingFights({ onlyPastDue = true, page = 0, pageSize = 6 } = {}) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase
+        .from('fights')
+        .select('*')
+        .eq('status', 'scheduled');
+
+    if (onlyPastDue) query = query.lt('fight_date', new Date().toISOString());
+
+    const { data, error } = await query
+        .order('fight_date', { ascending: false })
+        .range(from, to);
+
+    if (error) return { fights: [], error };
+    return { fights: data || [], error: null };
+}
 export async function adminResolveFight({ fightId, winnerExternalId, method, round = null }) {
     if (!fightId || !winnerExternalId || !method) {
         return { fight: null, error: { message: 'Faltan campos para resolver la pelea' } };

@@ -184,6 +184,12 @@ export async function updatePublication(publicationId, updates) {
 
 /**
  * Elimina una publicación
+ *
+ * Un DELETE bloqueado por RLS no devuelve error: simplemente afecta 0 filas.
+ * Por eso se pide `.select()` y se comprueba cuántas se borraron — si no se
+ * verificara, la UI daría por exitoso un borrado que la base rechazó y la
+ * publicación reaparecería al recargar.
+ *
  * @param {string} publicationId - ID de la publicación
  * @returns {Promise<{success: boolean, error: Object|null}>}
  */
@@ -196,14 +202,22 @@ export async function deletePublication(publicationId) {
             .eq('id', publicationId)
             .single();
 
-        // Eliminar la publicación
-        const { error } = await supabase
+        // Eliminar la publicación (devuelve las filas efectivamente borradas)
+        const { data: deleted, error } = await supabase
             .from('publications')
             .delete()
-            .eq('id', publicationId);
+            .eq('id', publicationId)
+            .select('id');
 
         if (error) {
             return { success: false, error };
+        }
+
+        if (!deleted || deleted.length === 0) {
+            return {
+                success: false,
+                error: { message: 'No se pudo eliminar la publicación: no existe o no tenés permisos.' }
+            };
         }
 
         // Eliminar la imagen si existe

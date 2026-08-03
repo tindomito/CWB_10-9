@@ -160,38 +160,58 @@
                 </div>
             </section>
 
-            <!-- RANKING COMUNIDAD -->
+            <!-- TOP PREDICTORES (All-Time) -->
             <section>
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="inline-block w-1 h-5 bg-amber-500 rounded-full"></span>
-                    <h2 class="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest">Ranking comunidad · último evento</h2>
+                <div class="flex items-center justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="inline-block w-1 h-5 bg-amber-500 rounded-full"></span>
+                        <h2 class="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest truncate">Top predictores · All-Time</h2>
+                    </div>
+                    <RouterLink
+                        to="/clasificaciones"
+                        class="shrink-0 text-[10px] font-bold text-[#D4AF37] hover:text-amber-300 uppercase tracking-wide"
+                    >
+                        Ver todo →
+                    </RouterLink>
                 </div>
 
                 <div class="bg-ufc-card rounded-2xl border border-zinc-800 overflow-hidden">
-                    <div class="px-5 py-4 border-b border-zinc-800 bg-gradient-to-r from-amber-500/10 to-transparent">
-                        <p class="text-xs text-gray-500 uppercase tracking-wider">Top 3 predictores</p>
-                        <p class="text-sm text-white font-semibold">UFC 312 · Du Plessis vs Chimaev</p>
+                    <!-- Loading -->
+                    <div v-if="loadingPredictors" class="flex justify-center py-10">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF37]"></div>
                     </div>
-                    <ul>
+
+                    <!-- Vacío -->
+                    <div v-else-if="topPredictors.length === 0" class="px-5 py-8 text-center text-sm text-gray-500">
+                        Todavía no hay predictores con XP. ¡Sé el primero!
+                    </div>
+
+                    <ul v-else>
                         <li
                             v-for="(predictor, idx) in topPredictors"
-                            :key="predictor.username"
-                            class="flex items-center gap-4 px-5 py-4 border-b border-zinc-800 last:border-b-0"
+                            :key="predictor.user_id"
                         >
-                            <div
-                                class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-black text-base"
-                                :class="rankBadgeClass(idx)"
+                            <RouterLink
+                                :to="`/perfil/${slugFor(predictor)}`"
+                                class="flex items-center gap-4 px-5 py-4 border-b border-zinc-800 last:border-b-0 hover:bg-zinc-800/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:ring-inset"
                             >
-                                {{ idx + 1 }}
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-white font-semibold truncate">{{ predictor.username }}</p>
-                                <p class="text-xs text-gray-500 truncate">{{ predictor.rank }}</p>
-                            </div>
-                            <div class="text-right shrink-0">
-                                <p class="text-amber-400 font-black text-lg leading-none tabular-nums">+{{ predictor.points }}</p>
-                                <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-1">{{ predictor.hits }}/{{ predictor.total }} aciertos</p>
-                            </div>
+                                <div
+                                    class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-black text-base"
+                                    :class="rankBadgeClass(idx)"
+                                >
+                                    {{ idx + 1 }}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-white font-semibold truncate">{{ predictor.display_name || 'Usuario' }}</p>
+                                    <p class="text-xs text-gray-500 truncate">
+                                        {{ predictor.rango || 'Amateur' }}<span v-if="predictor.level"> · Nivel {{ predictor.level }}</span>
+                                    </p>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <p class="text-amber-400 font-black text-lg leading-none tabular-nums">{{ Number(predictor.xp).toLocaleString() }}</p>
+                                    <p class="text-[10px] text-gray-500 uppercase tracking-wider mt-1">XP</p>
+                                </div>
+                            </RouterLink>
                         </li>
                     </ul>
                 </div>
@@ -209,10 +229,11 @@
                 </div>
 
                 <div v-else-if="recentResults.length > 0" class="space-y-3">
-                    <article
+                    <RouterLink
                         v-for="fight in recentResults"
                         :key="fight.id"
-                        class="bg-ufc-card rounded-xl border border-zinc-800 hover:border-zinc-700 transition-colors p-4"
+                        :to="{ name: 'FightDetail', params: { fightId: fight.id } }"
+                        class="block bg-ufc-card rounded-xl border border-zinc-800 hover:border-[#D4AF37]/50 transition-colors p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]"
                     >
                         <div class="flex items-center justify-between gap-2 mb-2">
                             <span class="text-[10px] text-gray-500 uppercase tracking-wider truncate">{{ fight.category || 'MMA' }}</span>
@@ -242,7 +263,7 @@
                                 <p v-if="fight.fighters?.second?.winner" class="text-[10px] text-green-500 font-bold uppercase text-right">Win</p>
                             </div>
                         </div>
-                    </article>
+                    </RouterLink>
                 </div>
 
                 <div v-else class="bg-ufc-card rounded-xl border border-zinc-800 p-6 text-center text-sm text-gray-500">
@@ -251,15 +272,37 @@
             </section>
 
         </div>
+
+        <!-- Onboarding de preferencias (primera vez con sesión) -->
+        <OnboardingPreferencesModal
+            :open="showOnboarding"
+            @close="showOnboarding = false"
+            @saved="onOnboardingSaved"
+        />
     </div>
 </template>
 
 <script>
-import { getNextEvent, getUpcomingFights, getRecentResults, getDemoNow } from '../services/sports/index.js';
+import {
+    getNextEventForOrg,
+    getUpcomingFights,
+    getRecentResults,
+    getHomeEventOrg,
+    isOnboardingDone
+} from '../services/sports/index.js';
+import { getAlltimeLeaderboard } from '../services/leaderboards.js';
+import { createSlugFromDisplayName } from '../services/profiles.js';
 import { formatFullDate, formatShortDate } from '../utils/format.js';
+import { useAuth } from '../composables/useAuth.js';
+import OnboardingPreferencesModal from '../components/OnboardingPreferencesModal.vue';
 
 export default {
     name: 'Home',
+    components: { OnboardingPreferencesModal },
+    setup() {
+        const { isAuthenticated } = useAuth();
+        return { isAuthenticated };
+    },
     data() {
         return {
             nextEvent: null,
@@ -268,13 +311,12 @@ export default {
             loadingEvent: true,
             loadingUpcoming: true,
             loadingResults: true,
-            now: getDemoNow().getTime(),
+            homeEventOrg: getHomeEventOrg(),
+            now: 0,
             countdownInterval: null,
-            topPredictors: [
-                { username: '@elcortado_arg', rank: 'Maestro · Nivel 8', points: 92, hits: 11, total: 12 },
-                { username: '@bolsa_109', rank: 'Veterano · Nivel 7', points: 84, hits: 10, total: 12 },
-                { username: '@kimura_tata', rank: 'Veterano · Nivel 7', points: 78, hits: 9, total: 12 }
-            ]
+            topPredictors: [],
+            loadingPredictors: true,
+            showOnboarding: false
         };
     },
     computed: {
@@ -302,24 +344,17 @@ export default {
         }
     },
     async mounted() {
+        this.now = Date.now();
         this.countdownInterval = setInterval(() => {
-            this.now = getDemoNow().getTime();
+            this.now = Date.now();
         }, 1000);
 
-        const [eventRes, upcomingRes, resultsRes] = await Promise.all([
-            getNextEvent(),
-            getUpcomingFights(8),
-            getRecentResults(8)
-        ]);
+        await this.loadAll();
 
-        this.nextEvent = eventRes.event;
-        this.loadingEvent = false;
-
-        this.upcomingFights = upcomingRes.fights;
-        this.loadingUpcoming = false;
-
-        this.recentResults = resultsRes.fights;
-        this.loadingResults = false;
+        // Onboarding: solo la primera vez, y solo con sesión iniciada.
+        if (this.isAuthenticated && !isOnboardingDone()) {
+            this.showOnboarding = true;
+        }
     },
     beforeUnmount() {
         if (this.countdownInterval) clearInterval(this.countdownInterval);
@@ -327,10 +362,43 @@ export default {
     methods: {
         formatEventDate: formatFullDate,
         formatShortDate,
+        async loadAll() {
+            this.homeEventOrg = getHomeEventOrg();
+            this.loadingEvent = true;
+            this.loadingUpcoming = true;
+            this.loadingResults = true;
+
+            const [eventRes, upcomingRes, resultsRes, predictorsRes] = await Promise.all([
+                getNextEventForOrg(this.homeEventOrg),
+                getUpcomingFights(8),
+                getRecentResults(8),
+                getAlltimeLeaderboard(3)
+            ]);
+
+            this.topPredictors = predictorsRes.rows || [];
+            this.loadingPredictors = false;
+
+            this.nextEvent = eventRes.event;
+            this.loadingEvent = false;
+            this.now = Date.now();
+
+            this.upcomingFights = upcomingRes.fights;
+            this.loadingUpcoming = false;
+
+            this.recentResults = resultsRes.fights;
+            this.loadingResults = false;
+        },
+        onOnboardingSaved() {
+            // Cambió qué org destacar y qué orgs mostrar: recargamos el Home.
+            this.loadAll();
+        },
         rankBadgeClass(idx) {
             if (idx === 0) return 'bg-gradient-to-br from-amber-400 to-amber-600 text-black shadow-lg shadow-amber-500/30';
             if (idx === 1) return 'bg-gradient-to-br from-zinc-300 to-zinc-500 text-black';
             return 'bg-gradient-to-br from-amber-700 to-amber-900 text-white';
+        },
+        slugFor(predictor) {
+            return createSlugFromDisplayName(predictor.display_name) || predictor.user_id;
         }
     }
 };

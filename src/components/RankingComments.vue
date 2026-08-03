@@ -73,6 +73,18 @@
                     <p class="text-sm text-gray-200 whitespace-pre-wrap break-words mt-0.5">{{ c.content }}</p>
                 </div>
             </li>
+
+            <!-- Cargar más -->
+            <li v-if="hasMore" class="p-3 text-center">
+                <button
+                    type="button"
+                    @click="loadMore"
+                    :disabled="loadingMore"
+                    class="text-xs font-bold uppercase tracking-wide text-[#D4AF37] hover:text-amber-300 disabled:opacity-50"
+                >
+                    {{ loadingMore ? 'Cargando…' : 'Cargar más comentarios' }}
+                </button>
+            </li>
         </ul>
     </div>
 </template>
@@ -106,8 +118,12 @@ export default {
             comments: [],
             newComment: '',
             loading: true,
+            loadingMore: false,
             sending: false,
-            channel: null
+            channel: null,
+            page: 0,
+            pageSize: 50,
+            hasMore: false
         };
     },
     async mounted() {
@@ -131,9 +147,22 @@ export default {
     methods: {
         async load() {
             this.loading = true;
-            const { comments } = await getRankingComments(this.rankingId);
+            this.page = 0;
+            const { comments } = await getRankingComments(this.rankingId, 0, this.pageSize);
             this.comments = comments;
+            this.hasMore = comments.length === this.pageSize;
             this.loading = false;
+            this.$emit('count', this.comments.length);
+        },
+        async loadMore() {
+            if (this.loadingMore || !this.hasMore) return;
+            this.loadingMore = true;
+            const nextPage = this.page + 1;
+            const { comments } = await getRankingComments(this.rankingId, nextPage, this.pageSize);
+            this.comments = [...this.comments, ...comments];
+            this.page = nextPage;
+            this.hasMore = comments.length === this.pageSize;
+            this.loadingMore = false;
             this.$emit('count', this.comments.length);
         },
         async submit() {

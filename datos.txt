@@ -1,0 +1,12 @@
+Carrera: Diseño y programación web
+Materia: Clientes Web Mobile
+Comisión de cursada: DWM4AP
+Comisión actual: DWM4AV 
+Nombre: Indomito Teo
+Docente: Santiago Gallino
+Caracter de entrega: Final
+
+
+Cuenta admin:
+teo.indomito@davinci.edu.ar
+admin123

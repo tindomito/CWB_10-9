@@ -216,7 +216,10 @@ router.beforeEach(async (to, from, next) => {
         }
     }
 
-    // Si va a /profile sin ID y está autenticado, redirigir a su propio perfil
+    // /perfil sin id significa "mi perfil": con sesión se resuelve al id propio.
+    // Sin sesión no hay ningún perfil que mostrar, así que se manda al login en
+    // vez de cargar la página con un id vacío (que terminaba en un error).
+    // Los perfiles ajenos (/perfil/<id>) siguen siendo públicos.
     if (to.name === 'Profile' && !to.params.id) {
         const { userId } = useAuth();
 
@@ -225,8 +228,13 @@ router.beforeEach(async (to, from, next) => {
                 name: 'Profile',
                 params: { id: userId.value }
             });
-            return;
+        } else {
+            next({
+                name: 'Login',
+                query: { redirect: to.fullPath }
+            });
         }
+        return;
     }
 
     next();

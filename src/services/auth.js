@@ -107,6 +107,40 @@ export async function updateProfile(updates) {
  * @param {string} newPassword - Nueva contraseña
  * @returns {Promise<{success: boolean, error: Object|null}>}
  */
+/**
+ * Envía el correo de recuperación de contraseña.
+ *
+ * `redirectTo` es la página a la que vuelve el usuario desde el enlace del
+ * mail; se arma con el origen actual para que funcione igual en desarrollo y
+ * en producción. Esa URL debe estar autorizada en Supabase
+ * (Authentication → URL Configuration → Redirect URLs).
+ *
+ * Siempre responde como si el envío hubiera salido bien: confirmar si un email
+ * existe o no permitiría averiguar quién tiene cuenta en la app.
+ *
+ * @param {string} email
+ * @returns {Promise<{success: boolean, error: Object|null}>}
+ */
+export async function sendPasswordReset(email) {
+    if (!email) {
+        return { success: false, error: { message: 'Ingresá tu email' } };
+    }
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/restablecer-password`
+        });
+
+        // Un error del proveedor (por ejemplo, demasiados intentos seguidos) sí
+        // se informa; que el email no exista no se distingue a propósito.
+        if (error && error.status !== 400) {
+            return { success: false, error };
+        }
+        return { success: true, error: null };
+    } catch (error) {
+        return { success: false, error: { message: 'No se pudo enviar el correo de recuperación' } };
+    }
+}
+
 export async function updatePassword(newPassword) {
     try {
         // Validación básica

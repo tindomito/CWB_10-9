@@ -91,6 +91,16 @@
                     </div>
                 </div>
 
+                <!-- Recuperar contraseña -->
+                <div class="flex justify-end -mt-2">
+                    <RouterLink
+                        to="/recuperar-password"
+                        class="text-sm font-medium text-[#D4AF37] hover:text-amber-300"
+                    >
+                        ¿Olvidaste tu contraseña?
+                    </RouterLink>
+                </div>
+
                 <!-- Botón submit -->
                 <div>
                     <button

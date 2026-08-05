@@ -65,8 +65,16 @@
                     {{ publication.title }}
                 </h2>
                 <p class="text-gray-300 whitespace-pre-wrap leading-relaxed break-words">
-                    {{ publication.content }}
+                    {{ contenidoVisible }}
                 </p>
+                <button
+                    v-if="mostrarBotonLeerMas"
+                    type="button"
+                    @click="expandido = !expandido"
+                    class="mt-1 text-sm font-semibold text-[#D4AF37] hover:text-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] rounded"
+                >
+                    {{ expandido ? 'Leer menos' : 'Leer más' }}
+                </button>
 
                 <div v-if="publication.image_url" class="mt-4">
                     <button
@@ -225,6 +233,9 @@ import { useToast } from '../composables/useToast.js';
 import CommentsList from './CommentsList.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 
+/** A partir de acá el texto se recorta y aparece el botón "Leer más". */
+const MAX_CARACTERES = 400;
+
 export default {
     name: 'PublicationCard',
     components: {
@@ -235,6 +246,15 @@ export default {
         publication: {
             type: Object,
             required: true
+        },
+        /**
+         * Muestra el contenido completo, sin recortar. Se usa en la vista de
+         * detalle: ahí el usuario ya entró a leer la publicación, cortarla no
+         * tendría sentido.
+         */
+        full: {
+            type: Boolean,
+            default: false
         }
     },
     emits: ['edit', 'delete', 'like'],
@@ -267,7 +287,9 @@ export default {
             likesChannel: null,
             // Guardar
             saved: false,
-            bookmarkBusy: false
+            bookmarkBusy: false,
+            // Texto largo recortado con "Leer más"
+            expandido: false
         };
     },
     async mounted() {
@@ -302,6 +324,33 @@ export default {
         unsubscribeLikes(this.likesChannel);
     },
     computed: {
+        /**
+         * Recorte del texto largo. Sin esto una sola publicación puede ocupar
+         * varias pantallas en el feed y tapar al resto.
+         *
+         * El corte busca el último espacio antes del límite para no partir una
+         * palabra al medio.
+         */
+        contenidoVisible() {
+            const texto = this.publication.content || '';
+            if (!this.debeRecortar) return texto;
+
+            const corte = texto.slice(0, MAX_CARACTERES);
+            const ultimoEspacio = corte.lastIndexOf(' ');
+            const limpio = ultimoEspacio > MAX_CARACTERES * 0.8
+                ? corte.slice(0, ultimoEspacio)
+                : corte;
+            return limpio.trimEnd() + '…';
+        },
+        debeRecortar() {
+            if (this.full || this.expandido) return false;
+            return (this.publication.content || '').length > MAX_CARACTERES;
+        },
+        /** El botón aparece si hay algo que recortar, o para volver a plegar. */
+        mostrarBotonLeerMas() {
+            if (this.full) return false;
+            return (this.publication.content || '').length > MAX_CARACTERES;
+        },
         isOwnPublication() {
             return this.publication.user_id === this.currentUserId || this.isAdmin;
         },

@@ -8,6 +8,18 @@
             class="h-7 w-7 sm:h-8 sm:w-8 select-none"
             draggable="false"
         />
-        <p class="text-xs tracking-widest text-gray-500">EL ROUND NO MIENTE · &copy; 2025</p>
+        <p class="text-xs tracking-widest text-gray-500">EL ROUND NO MIENTE · &copy; {{ year }}</p>
     </footer>
 </template>
+
+<script>
+export default {
+    name: 'MyFooter',
+    computed: {
+        // Se calcula en vez de escribirse a mano: así no vuelve a quedar viejo.
+        year() {
+            return new Date().getFullYear();
+        }
+    }
+};
+</script>

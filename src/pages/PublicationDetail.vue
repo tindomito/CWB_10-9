@@ -28,6 +28,7 @@
         <PublicationCard
             v-else-if="publication"
             :publication="publication"
+            full
             @delete="handleDeleted"
             @edit="goToFeed"
         />

@@ -31,6 +31,8 @@ const PublicationDetail = () => import('../pages/PublicationDetail.vue');
 const EventDetail       = () => import('../pages/EventDetail.vue');
 const FightDetail       = () => import('../pages/FightDetail.vue');
 const NotFound          = () => import('../pages/NotFound.vue');
+const ForgotPassword    = () => import('../pages/ForgotPassword.vue');
+const ResetPassword     = () => import('../pages/ResetPassword.vue');
 
 // Definimos la lista de rutas de nuestra aplicación
 const routes = [
@@ -48,6 +50,18 @@ const routes = [
         path: '/ingresar',
         component: Login,
         name: 'Login'
+    },
+    {
+        path: '/recuperar-password',
+        component: ForgotPassword,
+        name: 'ForgotPassword'
+    },
+    {
+        // Destino del enlace que llega por correo. Es pública a propósito:
+        // quien la abre todavía no inició sesión.
+        path: '/restablecer-password',
+        component: ResetPassword,
+        name: 'ResetPassword'
     },
     {
         path: '/registro',

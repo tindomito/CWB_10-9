@@ -161,6 +161,13 @@ export function validateImageFile(file) {
  */
 export async function uploadProfileAvatar(file, userId) {
     try {
+        // Sin userId el nombre quedaría "avatars/undefined.ext" y todos los
+        // usuarios compartirían el mismo archivo, pisándose el avatar entre sí.
+        // Se corta acá en vez de subir algo inutilizable.
+        if (!userId) {
+            return { url: null, error: { message: 'Falta el usuario para subir el avatar' } };
+        }
+
         // Validar que sea una imagen
         const validation = validateImageFile(file);
         if (!validation.valid) {
@@ -300,6 +307,12 @@ export async function deleteProfileAvatar(avatarUrl) {
  */
 export async function uploadProfileCover(file, userId) {
     try {
+        // Mismo motivo que en uploadProfileAvatar: sin userId el archivo sería
+        // "covers/undefined.ext", compartido por todos.
+        if (!userId) {
+            return { url: null, error: { message: 'Falta el usuario para subir la portada' } };
+        }
+
         const validation = validateImageFile(file);
         if (!validation.valid) return { url: null, error: { message: validation.error } };
 

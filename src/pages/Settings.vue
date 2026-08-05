@@ -746,8 +746,12 @@ export default {
                 // Subir avatar si se seleccionó uno nuevo
                 let avatarUrl = this.form.avatar_url;
                 if (this.avatarFile) {
-                    const user = await getCurrentUser();
-                    if (!user) {
+                    // getCurrentUser() devuelve { user, error }: hay que
+                    // desestructurar. Sin esto `user.id` quedaba undefined y
+                    // todos los avatares se guardaban como "avatars/undefined.ext",
+                    // pisándose entre usuarios.
+                    const { user } = await getCurrentUser();
+                    if (!user?.id) {
                         this.errorMessage = 'No se pudo obtener el usuario actual';
                         return;
                     }
@@ -765,8 +769,8 @@ export default {
                 // Subir cover si se seleccionó uno nuevo
                 let coverUrl = this.form.cover_url;
                 if (this.coverFile) {
-                    const user = await getCurrentUser();
-                    if (!user) {
+                    const { user } = await getCurrentUser();
+                    if (!user?.id) {
                         this.errorMessage = 'No se pudo obtener el usuario actual';
                         return;
                     }

@@ -34,7 +34,7 @@
                     {{ idx === 0 ? '👑' : '#' + idx }}
                 </span>
                 <div class="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 overflow-hidden shrink-0 flex items-center justify-center">
-                    <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                    <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" class="w-full h-full object-cover" @error="onFighterImageError" />
                     <span v-else class="text-[9px] text-gray-500 font-bold">{{ initials(entry.name) }}</span>
                 </div>
                 <span class="text-sm text-white truncate">{{ entry.name }}</span>
@@ -57,6 +57,7 @@
 
 <script>
 import { getInitials } from '../utils/format.js';
+import { onFighterImageError } from '../utils/images.js';
 export default {
     name: 'RankingCard',
     props: {
@@ -72,6 +73,7 @@ export default {
         }
     },
     methods: {
+        onFighterImageError,
         initials: (name) => getInitials(name, '?'),
     }
 };

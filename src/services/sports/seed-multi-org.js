@@ -21,6 +21,7 @@
  * que Home la consume sin adaptación y el resto de la app la obtiene como
  * InternalFight reutilizando el mapRawFightToInternal del adapter.
  */
+import { FIGHTER_PLACEHOLDER } from '../../utils/images.js';
 
 // ---------------------------------------------------------------------------
 // Identificadores de organización (sirven para el filtro de visibilidad)
@@ -36,11 +37,11 @@ export const SEED_ORG_LABELS = Object.freeze({
 });
 
 /**
- * Avatar genérico para peleadores sin foto (silueta sobre gris), embebido como
- * data-URI para no depender de un archivo ni de la red.
+ * Silueta para los peleadores semilla, que no tienen foto real. Es la misma que
+ * usa el resto de la app cuando la imagen del proveedor no existe: se importa
+ * en vez de repetir el data-URI.
  */
-export const FIGHTER_PLACEHOLDER_PHOTO =
-    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%234a4a4a'/%3E%3Ccircle cx='32' cy='24' r='13' fill='%23111111'/%3E%3Cpath d='M32 42c-11 0-20 9-20 20v2h40v-2c0-11-9-20-20-20z' fill='%23111111'/%3E%3C/svg%3E";
+export const FIGHTER_PLACEHOLDER_PHOTO = FIGHTER_PLACEHOLDER;
 
 // ---------------------------------------------------------------------------
 // Helpers de construcción

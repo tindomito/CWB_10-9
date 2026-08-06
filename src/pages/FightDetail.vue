@@ -55,7 +55,7 @@
                                     :title="fight.fighter1.externalId ? `Ver perfil de ${fight.fighter1.name}` : null"
                                 >
                                     <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-amber-500/60 bg-zinc-800 group-hover:border-amber-400 transition-colors">
-                                        <img v-if="fight.fighter1.photo" :src="fight.fighter1.photo" :alt="fight.fighter1.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                                        <img v-if="fight.fighter1.photo" :src="fight.fighter1.photo" :alt="fight.fighter1.name" class="w-full h-full object-cover" @error="onFighterImageError" />
                                     </div>
                                     <h2 class="mt-3 text-base sm:text-xl font-black text-white uppercase leading-tight group-hover:text-amber-400 transition-colors">{{ fight.fighter1.name || 'TBD' }}</h2>
                                 </component>
@@ -80,7 +80,7 @@
                                     :title="fight.fighter2.externalId ? `Ver perfil de ${fight.fighter2.name}` : null"
                                 >
                                     <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-red-500/60 bg-zinc-800 group-hover:border-red-400 transition-colors">
-                                        <img v-if="fight.fighter2.photo" :src="fight.fighter2.photo" :alt="fight.fighter2.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                                        <img v-if="fight.fighter2.photo" :src="fight.fighter2.photo" :alt="fight.fighter2.name" class="w-full h-full object-cover" @error="onFighterImageError" />
                                     </div>
                                     <h2 class="mt-3 text-base sm:text-xl font-black text-white uppercase leading-tight group-hover:text-red-400 transition-colors">{{ fight.fighter2.name || 'TBD' }}</h2>
                                 </component>
@@ -161,6 +161,7 @@
 <script>
 import { getFightById, getFighterById, getFighterRecord, FIGHT_METHOD_LABELS } from '../services/sports/index.js';
 import { formatLongDate, formatMediumDate } from '../utils/format.js';
+import { onFighterImageError } from '../utils/images.js';
 
 export default {
     name: 'FightDetail',
@@ -238,6 +239,7 @@ export default {
         }
     },
     methods: {
+        onFighterImageError,
         /** Ruta al perfil del peleador (o null si no tiene id del proveedor). */
         fighterLink(fighter) {
             if (!fighter?.externalId) return null;

@@ -56,7 +56,7 @@
                         class="w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-zinc-800/60 transition-colors"
                     >
                         <div class="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden shrink-0">
-                            <img v-if="f.photo" :src="f.photo" :alt="f.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                            <img v-if="f.photo" :src="f.photo" :alt="f.name" class="w-full h-full object-cover" @error="onFighterImageError" />
                             <svg aria-hidden="true" v-else class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                         </div>
                         <div class="flex-1 min-w-0">
@@ -76,6 +76,7 @@
 
 <script>
 import { getInitials } from '../utils/format.js';
+import { onFighterImageError } from '../utils/images.js';
 export default {
     name: 'SearchResults',
     props: {
@@ -87,6 +88,7 @@ export default {
     },
     emits: ['navigate'],
     methods: {
+        onFighterImageError,
         getInitials,
     }
 };

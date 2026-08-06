@@ -80,7 +80,7 @@
                             <!-- Peleador 1 -->
                             <div class="flex-1 flex items-center gap-3 min-w-0">
                                 <div class="w-12 h-12 rounded-full overflow-hidden border border-zinc-700 bg-zinc-800 shrink-0">
-                                    <img v-if="fight.fighter1.photo" :src="fight.fighter1.photo" :alt="fight.fighter1.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                                    <img v-if="fight.fighter1.photo" :src="fight.fighter1.photo" :alt="fight.fighter1.name" class="w-full h-full object-cover" @error="onFighterImageError" />
                                 </div>
                                 <p class="text-sm font-bold text-white truncate">{{ fight.fighter1.name || 'TBD' }}</p>
                             </div>
@@ -91,7 +91,7 @@
                             <div class="flex-1 flex items-center gap-3 justify-end min-w-0 text-right">
                                 <p class="text-sm font-bold text-white truncate">{{ fight.fighter2.name || 'TBD' }}</p>
                                 <div class="w-12 h-12 rounded-full overflow-hidden border border-zinc-700 bg-zinc-800 shrink-0">
-                                    <img v-if="fight.fighter2.photo" :src="fight.fighter2.photo" :alt="fight.fighter2.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                                    <img v-if="fight.fighter2.photo" :src="fight.fighter2.photo" :alt="fight.fighter2.name" class="w-full h-full object-cover" @error="onFighterImageError" />
                                 </div>
                             </div>
 
@@ -111,6 +111,7 @@
 <script>
 import { getEventBySlug } from '../services/sports/index.js';
 import { formatFullDate } from '../utils/format.js';
+import { onFighterImageError } from '../utils/images.js';
 
 export default {
     name: 'EventDetail',
@@ -122,6 +123,7 @@ export default {
         };
     },
     methods: {
+        onFighterImageError,
         async load() {
             this.loading = true;
             const slug = this.$route.params.slug;

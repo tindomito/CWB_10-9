@@ -62,7 +62,7 @@
                     </span>
                     <div class="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 overflow-hidden shrink-0 flex items-center justify-center"
                          :class="idx === 0 ? 'border-[#D4AF37]/50' : ''">
-                        <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" class="w-full h-full object-cover" @error="$event.target.style.display='none'" />
+                        <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" class="w-full h-full object-cover" @error="onFighterImageError" />
                         <span v-else class="text-[10px] text-gray-500 font-bold">{{ initials(entry.name) }}</span>
                     </div>
                     <span class="text-sm font-medium text-white truncate">{{ entry.name }}</span>
@@ -175,6 +175,7 @@ import { isSaved, toggleSave } from '../services/saved-items.js';
 import { shareLink, absoluteUrl } from '../services/share.js';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import RankingComments from '../components/RankingComments.vue';
+import { onFighterImageError } from '../utils/images.js';
 
 export default {
     name: 'RankingDetail',
@@ -221,6 +222,7 @@ export default {
         }
     },
     methods: {
+        onFighterImageError,
         initials: (name) => getInitials(name, '?'),
         async load(id) {
             this.loading = true;

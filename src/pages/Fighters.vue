@@ -73,7 +73,7 @@
                                 :src="selectedFighter.photo"
                                 :alt="selectedFighter.name"
                                 class="w-full h-full object-cover"
-                                @error="$event.target.style.display='none'"
+                                @error="onFighterImageError"
                             />
                             <div v-else class="w-full h-full flex items-center justify-center">
                                 <svg aria-hidden="true" class="w-14 h-14 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +215,7 @@
                                             :src="fight.fighters.first.logo"
                                             :alt="fight.fighters?.first?.name"
                                             class="w-full h-full object-cover"
-                                            @error="$event.target.style.display='none'"
+                                            @error="onFighterImageError"
                                         />
                                     </div>
                                     <div class="min-w-0">
@@ -269,7 +269,7 @@
                                             :src="fight.fighters.second.logo"
                                             :alt="fight.fighters?.second?.name"
                                             class="w-full h-full object-cover"
-                                            @error="$event.target.style.display='none'"
+                                            @error="onFighterImageError"
                                         />
                                     </div>
                                 </component>
@@ -341,7 +341,7 @@
                         :src="fighter.photo"
                         :alt="fighter.name"
                         class="w-full h-full object-cover"
-                        @error="$event.target.style.display='none'"
+                        @error="onFighterImageError"
                     />
                     <div v-else class="w-full h-full flex items-center justify-center">
                         <svg aria-hidden="true" class="w-7 h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,6 +392,7 @@
 <script>
 import { searchFighters, getFighterFights, getFighterById, buildFightId } from '../services/sports/index.js';
 import { formatMediumDate, formatDateTime } from '../utils/format.js';
+import { onFighterImageError } from '../utils/images.js';
 
 // Cuántas peleas del historial se muestran por "página" de render.
 // La API externa no soporta offset, así que la traída va completa (cacheada)
@@ -421,6 +422,7 @@ export default {
         }
     },
     methods: {
+        onFighterImageError,
         /**
          * ¿Este peleador de la fila del historial es el rival (y no el que se
          * está viendo)? Solo el rival se muestra como enlace.

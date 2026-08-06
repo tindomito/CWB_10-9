@@ -77,7 +77,7 @@
                             </span>
                             <!-- Foto -->
                             <div class="w-9 h-9 rounded-full bg-zinc-800 border border-zinc-700 overflow-hidden flex items-center justify-center">
-                                <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" draggable="false" class="w-full h-full object-cover pointer-events-none" @error="$event.target.style.display='none'" />
+                                <img v-if="entry.photo" :src="entry.photo" :alt="entry.name" draggable="false" class="w-full h-full object-cover pointer-events-none" @error="onFighterImageError" />
                                 <span v-else class="text-[9px] text-gray-500 font-bold">{{ initials(entry.name) }}</span>
                             </div>
                         </div>
@@ -162,6 +162,7 @@ import { getInitials } from '../utils/format.js';
 import { DIVISIONS, MAX_ENTRIES, createRanking, updateRanking, getRanking } from '../services/rankings.js';
 import { getFightersByDivision } from '../services/sports/index.js';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
+import { onFighterImageError } from '../utils/images.js';
 
 export default {
     name: 'RankingEditor',
@@ -201,6 +202,7 @@ export default {
         }
     },
     methods: {
+        onFighterImageError,
         initials: (name) => getInitials(name, '?'),
         onDivisionChange() {
             // Si ya hay lista cargada, pedimos confirmación antes de reemplazarla.
